@@ -1,6 +1,6 @@
 import { getBarangays } from "@/lib/barangay/data";
 import { getSchedules } from "@/lib/schedules/data";
-import { getDriverOptions } from "@/lib/routes/data";
+import { getDriverOptions, getRoutes } from "@/lib/routes/data";
 import { createClient } from "@/lib/supabase/server";
 import type { CollectionMonitoringData } from "@/types/collection-monitoring";
 import type { Schedule } from "@/types/schedules";
@@ -43,9 +43,10 @@ function uniqueDrivers(schedules: Schedule[], fromUsers: string[]): string[] {
 }
 
 export async function getCollectionMonitoringData(): Promise<CollectionMonitoringData> {
-  const [schedules, routesCount, wasteCollectedKg, barangays, driverOptions] =
+  const [schedules, routes, routesCount, wasteCollectedKg, barangays, driverOptions] =
     await Promise.all([
       getSchedules(),
+      getRoutes(),
       getRoutesCount(),
       getWasteCollectedKg(),
       getBarangays(),
@@ -54,6 +55,7 @@ export async function getCollectionMonitoringData(): Promise<CollectionMonitorin
 
   return {
     schedules,
+    routes,
     routesCount,
     wasteCollectedKg,
     barangayOptions: barangays.map((b) => b.name),

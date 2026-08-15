@@ -1,4 +1,6 @@
 import type { Schedule, ScheduleStatus } from "@/types/schedules";
+import type { RouteStopStatus } from "@/types/routes";
+import type { Route } from "@/types/routes";
 
 export type CollectionMonitoringKpis = {
   todaysCollection: number;
@@ -37,8 +39,27 @@ export type CollectionMapMarker = {
   status: ScheduleStatus;
 };
 
+export type CollectionRouteStop = {
+  stopOrder: number;
+  name: string;
+  latitude: number;
+  longitude: number;
+  status: RouteStopStatus;
+};
+
+export type CollectionRouteOverlay = {
+  scheduleId: string;
+  barangay: string;
+  driver: string | null;
+  status: ScheduleStatus;
+  routeName: string;
+  routeCode: string;
+  stops: CollectionRouteStop[];
+};
+
 export type CollectionMonitoringData = {
   schedules: Schedule[];
+  routes: Route[];
   routesCount: number;
   wasteCollectedKg: number;
   barangayOptions: string[];

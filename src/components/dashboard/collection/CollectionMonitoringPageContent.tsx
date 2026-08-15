@@ -8,8 +8,8 @@ import CollectionSchedulePanel from "./CollectionSchedulePanel";
 import CollectionSummaryBar from "./CollectionSummaryBar";
 import CollectionTrackingMap from "./CollectionTrackingMap";
 import {
-  buildMapMarkers,
   buildRecentActivity,
+  buildRouteOverlays,
   computeMonitoringKpis,
   computeProgress,
   computeSummary,
@@ -27,6 +27,7 @@ function todayIso(): string {
 
 export default function CollectionMonitoringPageContent({
   schedules,
+  routes,
   routesCount,
   wasteCollectedKg,
   barangayOptions,
@@ -71,7 +72,10 @@ export default function CollectionMonitoringPageContent({
     [schedules, date]
   );
 
-  const markers = useMemo(() => buildMapMarkers(filtered), [filtered]);
+  const routeOverlays = useMemo(
+    () => buildRouteOverlays(filtered, routes),
+    [filtered, routes]
+  );
 
   return (
     <div className="collection-monitoring-page">
@@ -98,7 +102,7 @@ export default function CollectionMonitoringPageContent({
           schedules={filtered}
           allSchedules={schedules}
         />
-        <CollectionTrackingMap markers={markers} />
+        <CollectionTrackingMap overlays={routeOverlays} />
         <CollectionProgressPanel
           slices={slices}
           overallPercent={overallPercent}

@@ -3,10 +3,12 @@ import type {
   CollectionMapMarker,
   CollectionMonitoringKpis,
   CollectionProgressSlice,
+  CollectionRouteOverlay,
   CollectionSummary,
 } from "@/types/collection-monitoring";
 import { BARANGAY_MAP_COORDS } from "@/types/collection-monitoring";
 import type { Schedule, ScheduleStatus } from "@/types/schedules";
+import type { Route } from "@/types/routes";
 import { DRIVER_OPTIONS } from "@/types/schedules";
 
 const EXCLUDED: ScheduleStatus[] = ["no_collection", "maintenance"];
@@ -140,6 +142,55 @@ export function buildMapMarkers(daySchedules: Schedule[]): CollectionMapMarker[]
       y: coords.y,
       status: s.status,
     };
+  });
+}
+
+function findRouteForSchedule(schedule: Schedule, routes: Route[]): Route | undefined {
+  const barangay = schedule.barangay.trim().toLowerCase();
+
+  return routes.find((route) => {
+    const routeBarangay = route.barangay.toLowerCase();
+    const routeArea = route.area.toLowerCase();
+    const routeName = route.name.toLowerCase();
+
+    return (
+      routeBarangay === barangay ||
+      routeArea === barangay ||
+      routeBarangay.includes(barangay) ||
+      routeName.includes(barangay) ||
+      (schedule.driver &&
+        route.driverName.toLowerCase() === schedule.driver.toLowerCase())
+    );
+  });
+}
+
+export function buildRouteOverlays(
+  daySchedules: Schedule[],
+  routes: Route[]
+): CollectionRouteOverlay[] {
+  const operational = daySchedules.filter(isOperationalSchedule);
+
+  return operational.flatMap((schedule) => {
+    const route = findRouteForSchedule(schedule, routes);
+    if (!route || route.stops.length === 0) return [];
+
+    return [
+      {
+        scheduleId: schedule.id,
+        barangay: schedule.barangay,
+        driver: schedule.driver,
+        status: schedule.status,
+        routeName: route.name,
+        routeCode: route.routeCode,
+        stops: route.stops.map((stop) => ({
+          stopOrder: stop.stopOrder,
+          name: stop.name,
+          latitude: stop.latitude,
+          longitude: stop.longitude,
+          status: stop.status,
+        })),
+      },
+    ];
   });
 }
 
