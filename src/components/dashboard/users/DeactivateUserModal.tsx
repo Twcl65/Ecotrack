@@ -1,8 +1,11 @@
 "use client";
 
-import { UserRoundMinus, X } from "lucide-react";
+import { Trash2, UserRoundMinus, X } from "lucide-react";
 import { useState } from "react";
-import { deactivateSystemUser } from "@/app/dashboard/users/actions";
+import {
+  deactivateSystemUser,
+  deleteSystemUser,
+} from "@/app/dashboard/users/actions";
 import type { SystemUser } from "@/types/user";
 import { USER_ROLE_CONFIG } from "@/types/user";
 
@@ -10,41 +13,60 @@ type Props = {
   user: SystemUser | null;
   open: boolean;
   onClose: () => void;
-  onSuccess: (user: SystemUser) => void;
+  onDeactivateSuccess: (user: SystemUser) => void;
+  onDeleteSuccess: (id: string) => void;
 };
 
 export default function DeactivateUserModal({
   user,
   open,
   onClose,
-  onSuccess,
+  onDeactivateSuccess,
+  onDeleteSuccess,
 }: Props) {
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState<"deactivate" | "delete" | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   if (!open || !user) return null;
 
   async function handleDeactivate() {
-    setLoading(true);
+    setLoading("deactivate");
     setError(null);
     const result = await deactivateSystemUser(user!.id);
-    setLoading(false);
+    setLoading(null);
 
     if (!result.success) {
       setError(result.error);
       return;
     }
 
-    if (result.user) onSuccess(result.user);
+    if (result.user) onDeactivateSuccess(result.user);
     onClose();
   }
+
+  async function handleDelete() {
+    setLoading("delete");
+    setError(null);
+    const result = await deleteSystemUser(user!.id);
+    setLoading(null);
+
+    if (!result.success) {
+      setError(result.error);
+      return;
+    }
+
+    onDeleteSuccess(user!.id);
+    onClose();
+  }
+
+  const busy = loading !== null;
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
       <div className="absolute inset-0 bg-black/40" onClick={onClose} aria-hidden />
       <div className="relative z-10 w-full max-w-md rounded-xl bg-white p-5 shadow-xl">
         <div className="flex items-start justify-between">
-          <h2 className="text-lg font-bold text-gray-900">Deactivate User</h2>
+          <h2 className="text-lg font-bold text-gray-900">Remove User</h2>
           <button
             type="button"
             onClick={onClose}
@@ -56,11 +78,11 @@ export default function DeactivateUserModal({
         </div>
 
         <p className="mt-4 text-center text-sm font-semibold text-gray-900">
-          Are you sure you want to deactivate this user?
+          What would you like to do with this user?
         </p>
         <p className="mt-1 text-center text-sm text-gray-500">
-          The account will be set to inactive and will no longer be able to sign
-          in.
+          Deactivate to block sign-in while keeping their record, or permanently
+          delete the account.
         </p>
 
         <div className="mt-4 rounded-lg bg-gray-50 px-3 py-3">
@@ -77,22 +99,32 @@ export default function DeactivateUserModal({
           </p>
         )}
 
-        <div className="mt-6 flex justify-end gap-2">
+        <div className="mt-6 flex flex-col gap-2 sm:flex-row sm:justify-end">
           <button
             type="button"
             onClick={onClose}
-            className="rounded-lg border border-gray-200 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50"
+            disabled={busy}
+            className="rounded-lg border border-gray-200 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-60"
           >
             Cancel
           </button>
           <button
             type="button"
             onClick={handleDeactivate}
-            disabled={loading || user.status === "inactive"}
-            className="inline-flex items-center gap-2 rounded-lg bg-red-500 px-4 py-2 text-sm font-semibold text-white hover:bg-red-600 disabled:opacity-60"
+            disabled={busy || user.status === "inactive"}
+            className="inline-flex items-center justify-center gap-2 rounded-lg border border-amber-500 px-4 py-2 text-sm font-semibold text-amber-600 hover:bg-amber-50 disabled:opacity-60"
           >
             <UserRoundMinus className="h-4 w-4" />
-            {loading ? "Deactivating..." : "Deactivate User"}
+            {loading === "deactivate" ? "Deactivating..." : "Deactivate User"}
+          </button>
+          <button
+            type="button"
+            onClick={handleDelete}
+            disabled={busy}
+            className="inline-flex items-center justify-center gap-2 rounded-lg bg-red-500 px-4 py-2 text-sm font-semibold text-white hover:bg-red-600 disabled:opacity-60"
+          >
+            <Trash2 className="h-4 w-4" />
+            {loading === "delete" ? "Deleting..." : "Delete User"}
           </button>
         </div>
       </div>

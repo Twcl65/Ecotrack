@@ -69,6 +69,7 @@ export type CollectionScheduleRow = {
   id: string;
   barangay: string;
   collection_date: string;
+  route_id: string | null;
   time_start: string | null;
   time_end: string | null;
   driver: string | null;

@@ -1,3 +1,4 @@
+import type { Route } from "@/types/routes";
 import type { Schedule, ScheduleStatus } from "@/types/schedules";
 
 /** Postgres TIME / timetz → "4:00 AM" */
@@ -41,20 +42,26 @@ export function formatDateLabel(dateStr: string): string {
   });
 }
 
-export function mapScheduleRow(row: {
-  id: string;
-  barangay: string;
-  collection_date: string;
-  time_start: string | null;
-  time_end: string | null;
-  driver: string | null;
-  status: string;
-}): Schedule {
+export function mapScheduleRow(
+  row: {
+    id: string;
+    barangay: string;
+    collection_date: string;
+    route_id?: string | null;
+    time_start: string | null;
+    time_end: string | null;
+    driver: string | null;
+    status: string;
+  },
+  route?: Route
+): Schedule {
   return {
     id: row.id,
     date: row.collection_date,
     dateLabel: formatDateLabel(row.collection_date),
     barangay: row.barangay,
+    routeId: row.route_id ?? null,
+    routeLabel: route ? `${route.routeCode} — ${route.name}` : null,
     timeStart: formatTimeDisplay(row.time_start),
     timeEnd: formatTimeDisplay(row.time_end),
     driver: row.driver,
@@ -65,6 +72,7 @@ export function mapScheduleRow(row: {
 export function scheduleToFormValues(schedule: Schedule): {
   barangay: string;
   collectionDate: string;
+  routeId: string;
   timeStart: string;
   timeEnd: string;
   driver: string;
@@ -73,6 +81,7 @@ export function scheduleToFormValues(schedule: Schedule): {
   return {
     barangay: schedule.barangay,
     collectionDate: schedule.date,
+    routeId: schedule.routeId ?? "",
     timeStart: schedule.timeStart ? toTimeInputValue(toDbTime(schedule.timeStart) ?? "") : "",
     timeEnd: schedule.timeEnd ? toTimeInputValue(toDbTime(schedule.timeEnd) ?? "") : "",
     driver: schedule.driver ?? "",

@@ -10,6 +10,7 @@ import {
   filterDriverSchedules,
 } from "@/lib/data/driver";
 import { fetchSchedules, formatTimeRange, type ScheduleItem } from "@/lib/data/schedules";
+import { todayIso } from "@/lib/date";
 import { fontSize, radius, spacing, type ThemeColors } from "@/constants/theme";
 
 export default function DriverStatusScreen() {
@@ -34,9 +35,7 @@ export default function DriverStatusScreen() {
   }, [load]);
 
   const progress = computeCollectionProgress(schedules);
-  const todayItems = schedules.filter(
-    (s) => s.date === new Date().toISOString().slice(0, 10)
-  );
+  const todayItems = schedules.filter((s) => s.date === todayIso());
 
   return (
     <View style={styles.screen}>

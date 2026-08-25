@@ -234,7 +234,7 @@ export default function UserTable({
                           type="button"
                           onClick={() => onDelete(row)}
                           className="rounded-md p-1.5 text-red-500 hover:bg-red-50"
-                          aria-label="Deactivate user"
+                          aria-label="Remove user"
                         >
                           <Trash2 className="h-4 w-4" />
                         </button>

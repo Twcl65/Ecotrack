@@ -1,3 +1,4 @@
+import { startOfToday } from "../date";
 import { supabase } from "../supabase";
 
 export type ScheduleItem = {
@@ -64,8 +65,7 @@ export function formatTimeRange(start: string | null, end: string | null): strin
 }
 
 export function getNextCollection(schedules: ScheduleItem[]): ScheduleItem | null {
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
+  const today = startOfToday();
   const upcoming = schedules.filter((s) => {
     const d = new Date(`${s.date}T12:00:00`);
     return d >= today && s.status !== "no_collection" && s.status !== "canceled";

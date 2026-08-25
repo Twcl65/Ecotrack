@@ -4,15 +4,14 @@ import { Calendar } from "react-native-calendars";
 import AppHeader from "@/components/AppHeader";
 import { useTheme } from "@/context/ThemeContext";
 import { fetchSchedules, type ScheduleItem } from "@/lib/data/schedules";
+import { todayIso } from "@/lib/date";
 import { fontSize, radius, spacing, type ThemeColors } from "@/constants/theme";
 
 export default function ScheduleScreen() {
   const { colors } = useTheme();
   const styles = useMemo(() => createStyles(colors), [colors]);
   const [schedules, setSchedules] = useState<ScheduleItem[]>([]);
-  const [selectedDate, setSelectedDate] = useState(
-    new Date().toISOString().slice(0, 10)
-  );
+  const [selectedDate, setSelectedDate] = useState(todayIso());
 
   const load = useCallback(async () => {
     setSchedules(await fetchSchedules());

@@ -10,6 +10,7 @@ CREATE TABLE IF NOT EXISTS collection_schedules (
   status TEXT NOT NULL DEFAULT 'pending' CHECK (
     status IN ('ongoing', 'pending', 'completed', 'canceled', 'no_collection', 'maintenance')
   ),
+  route_id UUID REFERENCES routes(id) ON DELETE SET NULL,
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );

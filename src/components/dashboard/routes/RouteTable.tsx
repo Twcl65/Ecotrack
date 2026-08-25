@@ -15,6 +15,7 @@ import {
 } from "lucide-react";
 import { useMemo, useState } from "react";
 import RouteStatusBadge from "./RouteStatusBadge";
+import { todayIso } from "@/lib/date";
 import type { Route, RouteStatus } from "@/types/routes";
 import {
   ROUTE_STATUS_OPTIONS,
@@ -56,9 +57,7 @@ export default function RouteTable({
   const [statusFilter, setStatusFilter] = useState<RouteStatus | "all">("all");
   const [driverFilter, setDriverFilter] = useState("all");
   const [barangayFilter, setBarangayFilter] = useState("all");
-  const [dateFilter, setDateFilter] = useState(
-    new Date().toISOString().slice(0, 10)
-  );
+  const [dateFilter, setDateFilter] = useState(todayIso());
   const [page, setPage] = useState(1);
 
   const filtered = useMemo(() => {

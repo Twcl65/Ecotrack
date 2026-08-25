@@ -28,6 +28,7 @@ export default function SchedulesListView({
       (s) =>
         s.barangay.toLowerCase().includes(q) ||
         s.dateLabel.toLowerCase().includes(q) ||
+        (s.routeLabel?.toLowerCase().includes(q) ?? false) ||
         (s.driver?.toLowerCase().includes(q) ?? false)
     );
   }, [schedules, search]);
@@ -71,7 +72,7 @@ export default function SchedulesListView({
           <table className="w-full min-w-[640px] text-left text-sm">
             <thead className="sticky top-0 z-10 border-b border-gray-200 bg-gray-50/95">
               <tr>
-                {["Date", "Barangay", "Time", "Driver", "Status", "Action"].map(
+                {["Date", "Barangay", "Route", "Time", "Driver", "Status", "Action"].map(
                   (col) => (
                     <th
                       key={col}
@@ -87,7 +88,7 @@ export default function SchedulesListView({
               {pageItems.length === 0 ? (
                 <tr>
                   <td
-                    colSpan={6}
+                    colSpan={7}
                     className="px-4 py-8 text-center text-sm text-gray-500"
                   >
                     No schedules found. Click &quot;Add Schedule&quot; to create one.
@@ -104,6 +105,9 @@ export default function SchedulesListView({
                   </td>
                   <td className="px-4 py-3 font-medium text-gray-900">
                     {row.barangay}
+                  </td>
+                  <td className="px-4 py-3 text-gray-600">
+                    {row.routeLabel ?? "—"}
                   </td>
                   <td className="whitespace-nowrap px-4 py-3 text-gray-600">
                     {row.timeStart && row.timeEnd

@@ -8,6 +8,7 @@ import { useAuth } from "@/context/AuthContext";
 import { useTheme } from "@/context/ThemeContext";
 import { filterDriverSchedules } from "@/lib/data/driver";
 import { fetchSchedules, formatTimeRange, type ScheduleItem } from "@/lib/data/schedules";
+import { todayIso } from "@/lib/date";
 import { fontSize, radius, spacing, type ThemeColors } from "@/constants/theme";
 
 export default function DriverScheduleScreen() {
@@ -16,9 +17,7 @@ export default function DriverScheduleScreen() {
   const router = useRouter();
   const styles = useMemo(() => createStyles(colors), [colors]);
   const [schedules, setSchedules] = useState<ScheduleItem[]>([]);
-  const [selectedDate, setSelectedDate] = useState(
-    new Date().toISOString().slice(0, 10)
-  );
+  const [selectedDate, setSelectedDate] = useState(todayIso());
 
   const driverName = profile?.fullName ?? "Driver";
 

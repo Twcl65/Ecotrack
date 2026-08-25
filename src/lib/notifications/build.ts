@@ -1,11 +1,8 @@
+import { todayIso } from "@/lib/date";
 import type { Announcement } from "@/types/announcement";
 import type { Complaint } from "@/types/complaint";
 import type { AdminNotification } from "@/types/notifications";
 import type { Schedule } from "@/types/schedules";
-
-function todayIso(): string {
-  return new Date().toISOString().slice(0, 10);
-}
 
 function truncate(text: string, max = 90): string {
   if (text.length <= max) return text;

@@ -1,10 +1,5 @@
+import { todayIso } from "../date";
 import { filterDriverSchedules } from "./driver";
-import { fetchSchedules } from "./schedules";
-import { supabase } from "../supabase";
-
-function todayIso(): string {
-  return new Date().toISOString().slice(0, 10);
-}
 
 export async function startSchedule(scheduleId: string): Promise<string | null> {
   const { error } = await supabase

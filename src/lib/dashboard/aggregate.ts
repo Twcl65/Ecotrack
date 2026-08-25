@@ -7,6 +7,7 @@ import type {
 } from "@/types/dashboard";
 import type { Schedule, ScheduleStatus } from "@/types/schedules";
 import { isOperationalSchedule } from "@/lib/collection/aggregate";
+import { formatIsoDateLocal, todayIso } from "@/lib/date";
 
 const AVG_WASTE_KG_PER_COLLECTION = 850;
 
@@ -16,10 +17,6 @@ const STATUS_COLORS: Record<string, string> = {
   pending: "#eab308",
   cancelled: "#ef4444",
 };
-
-function todayIso(): string {
-  return new Date().toISOString().slice(0, 10);
-}
 
 function scheduleToDashboardStatus(
   status: ScheduleStatus
@@ -146,10 +143,9 @@ export function computeCollectionStatus(schedules: Schedule[]): CollectionStatus
 
 export function computeWeeklySchedule(schedules: Schedule[]): WeeklyScheduleItem[] {
   const operational = schedules.filter(isOperationalSchedule);
-  if (operational.length === 0) return [];
-
-  const weekDates = getCurrentWeekWeekdays(pickWeekReferenceDate(operational));
+  const weekDates = getCurrentWeekWeekdays(new Date());
   const dayLabels = ["Mon", "Tue", "Wed", "Thu", "Fri"];
+  const today = todayIso();
 
   return weekDates.map((date, index) => {
     const iso = formatIsoDate(date);
@@ -160,23 +156,12 @@ export function computeWeeklySchedule(schedules: Schedule[]): WeeklyScheduleItem
       id: primary?.id ?? `week-${iso}`,
       day: dayLabels[index],
       date: date.toLocaleDateString("en-US", { month: "long", day: "numeric" }),
+      isoDate: iso,
+      isToday: iso === today,
       barangay: primary?.barangay ?? "No schedule",
       status: primary ? scheduleToDashboardStatus(primary.status) : "pending",
     };
   });
-}
-
-function pickWeekReferenceDate(schedules: Schedule[]): Date {
-  const now = new Date();
-  const weekDates = getCurrentWeekWeekdays(now);
-  const weekIsos = new Set(weekDates.map(formatIsoDate));
-
-  if (schedules.some((s) => weekIsos.has(s.date))) {
-    return now;
-  }
-
-  const latest = schedules.reduce((max, s) => (s.date > max ? s.date : max), schedules[0].date);
-  return new Date(`${latest}T12:00:00`);
 }
 
 function getCurrentWeekWeekdays(base: Date): Date[] {
@@ -195,10 +180,7 @@ function getCurrentWeekWeekdays(base: Date): Date[] {
 }
 
 function formatIsoDate(d: Date): string {
-  const y = d.getFullYear();
-  const m = String(d.getMonth() + 1).padStart(2, "0");
-  const day = String(d.getDate()).padStart(2, "0");
-  return `${y}-${m}-${day}`;
+  return formatIsoDateLocal(d);
 }
 
 export function mapAnnouncementsForDashboard(
@@ -238,7 +220,7 @@ export function emptyDashboardData(): {
     },
     collectionTrend: [],
     collectionStatus: computeCollectionStatus([]),
-    weeklySchedule: [],
+    weeklySchedule: computeWeeklySchedule([]),
     announcements: [],
   };
 }

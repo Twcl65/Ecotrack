@@ -115,7 +115,7 @@ export default function RouteFormModal({
   const addStop = useCallback(
     (lat: number, lng: number) => {
       setForm((prev) => {
-        const area = prev.area.trim() || "Route Area";
+        const area = parseBarangayList(prev.barangay)[0] || "Route Area";
         const order = prev.stops.length + 1;
         const stop: RouteFormStop = {
           clientId: newClientId(),
@@ -169,7 +169,7 @@ export default function RouteFormModal({
       return {
         ...prev,
         barangay: next.join(", "),
-        area: next[0] ?? prev.area,
+        area: next[0] ?? "",
       };
     });
   }
@@ -219,16 +219,18 @@ export default function RouteFormModal({
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-4 px-5 py-4">
-          <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-            <Field label="Route Code">
-              <input
-                required
-                value={form.routeCode}
-                onChange={(e) => setForm({ ...form, routeCode: e.target.value })}
-                placeholder="R-001"
-                className={inputClass}
-              />
-            </Field>
+          <div className={`grid grid-cols-2 gap-3 ${mode === "add" ? "sm:grid-cols-2" : "sm:grid-cols-3"}`}>
+            {mode === "edit" && (
+              <Field label="Route Code">
+                <input
+                  required
+                  value={form.routeCode}
+                  onChange={(e) => setForm({ ...form, routeCode: e.target.value })}
+                  placeholder="R-001"
+                  className={inputClass}
+                />
+              </Field>
+            )}
             <Field label="Status">
               <select
                 value={form.status}
@@ -245,22 +247,13 @@ export default function RouteFormModal({
               </select>
             </Field>
             <Field label="Area">
-              <input
-                required
-                value={form.area}
-                onChange={(e) => setForm({ ...form, area: e.target.value })}
-                placeholder="Upper Jasaan"
-                className={inputClass}
-              />
-            </Field>
-            <Field label="Primary Barangay">
               <select
                 required
                 value={primaryBarangay}
                 onChange={(e) => {
                   const value = e.target.value;
                   if (!value) {
-                    setForm((prev) => ({ ...prev, barangay: "", area: prev.area }));
+                    setForm((prev) => ({ ...prev, barangay: "", area: "" }));
                     return;
                   }
                   const others = selectedBarangays.filter((b) => b !== primaryBarangay);
@@ -275,7 +268,7 @@ export default function RouteFormModal({
                 }}
                 className={inputClass}
               >
-                <option value="">Select barangay</option>
+                <option value="">Select area</option>
                 {barangayChoices.map((b) => (
                   <option key={b} value={b}>
                     {b}
@@ -325,15 +318,23 @@ export default function RouteFormModal({
             </p>
           )}
 
-          <Field label="Route Name">
-            <input
-              required
-              value={form.name}
-              onChange={(e) => setForm({ ...form, name: e.target.value })}
-              placeholder="Route 1 - Upper Jasaan"
-              className={inputClass}
-            />
-          </Field>
+          {mode === "edit" && (
+            <Field label="Route Name">
+              <input
+                required
+                value={form.name}
+                onChange={(e) => setForm({ ...form, name: e.target.value })}
+                placeholder="Route 1 - Upper Jasaan"
+                className={inputClass}
+              />
+            </Field>
+          )}
+
+          {mode === "add" && (
+            <p className="text-sm text-gray-500">
+              Route code, name, and vehicle ID will be assigned automatically when you save.
+            </p>
+          )}
 
           <div>
             <div className="mb-2 flex items-center justify-between">
@@ -421,7 +422,7 @@ export default function RouteFormModal({
             </div>
           )}
 
-          <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+          <div className={`grid grid-cols-2 gap-3 ${mode === "add" ? "sm:grid-cols-3" : "sm:grid-cols-4"}`}>
             <Field label="Distance (km)">
               <input
                 readOnly
@@ -464,15 +465,17 @@ export default function RouteFormModal({
                 </p>
               )}
             </Field>
-            <Field label="Vehicle ID">
-              <input
-                required
-                value={form.vehicleId}
-                onChange={(e) => setForm({ ...form, vehicleId: e.target.value })}
-                placeholder="VEH-001"
-                className={inputClass}
-              />
-            </Field>
+            {mode === "edit" && (
+              <Field label="Vehicle ID">
+                <input
+                  required
+                  value={form.vehicleId}
+                  onChange={(e) => setForm({ ...form, vehicleId: e.target.value })}
+                  placeholder="VEH-001"
+                  className={inputClass}
+                />
+              </Field>
+            )}
           </div>
 
           {form.stops.length < 2 && (

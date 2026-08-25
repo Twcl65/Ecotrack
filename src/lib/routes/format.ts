@@ -1,4 +1,4 @@
-import type { Route, RouteStatus, RouteStop, RouteStopStatus } from "@/types/routes";
+import type { Route, RouteFormValues, RouteStatus, RouteStop, RouteStopStatus } from "@/types/routes";
 
 const DRIVERS = [
   "Juan Dela Cruz",
@@ -152,6 +152,27 @@ export function buildFallbackStops(routeId: string, routeName: string, area: str
   ];
 }
 
+export function primaryBarangayFromList(barangay: string): string {
+  return barangay
+    .split(",")
+    .map((s) => s.trim())
+    .filter(Boolean)[0] ?? "";
+}
+
+export function generateRouteDefaults(
+  existingCount: number,
+  values: Pick<RouteFormValues, "barangay" | "area">
+): Pick<RouteFormValues, "routeCode" | "name" | "vehicleId"> {
+  const num = existingCount + 1;
+  const area = primaryBarangayFromList(values.barangay) || values.area.trim() || "Route Area";
+
+  return {
+    routeCode: `R-${String(num).padStart(3, "0")}`,
+    name: `Route ${num} - ${area}`,
+    vehicleId: `VEH-${String(num).padStart(3, "0")}`,
+  };
+}
+
 export function formValuesToRow(values: {
   routeCode: string;
   name: string;
@@ -163,11 +184,12 @@ export function formValuesToRow(values: {
   vehicleId: string;
   status: RouteStatus;
 }) {
+  const area = primaryBarangayFromList(values.barangay) || values.area.trim();
   return {
     route_code: values.routeCode.trim(),
     name: values.name.trim(),
     barangay: values.barangay.trim(),
-    area: values.area.trim(),
+    area,
     distance_km: parseFloat(values.distanceKm) || 0,
     estimated_minutes: parseInt(values.estimatedMinutes, 10) || 0,
     driver_name: values.driverName.trim(),

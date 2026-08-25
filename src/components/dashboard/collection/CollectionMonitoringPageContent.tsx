@@ -15,15 +15,12 @@ import {
   computeSummary,
   filterSchedules,
 } from "@/lib/collection/aggregate";
+import { todayIso } from "@/lib/date";
 import type { CollectionMonitoringData } from "@/types/collection-monitoring";
 
 type Tab = "today" | "calendar";
 
 type Props = CollectionMonitoringData;
-
-function todayIso(): string {
-  return new Date().toISOString().slice(0, 10);
-}
 
 export default function CollectionMonitoringPageContent({
   schedules,
@@ -33,16 +30,8 @@ export default function CollectionMonitoringPageContent({
   barangayOptions,
   driverOptions,
 }: Props) {
-  const defaultDate = useMemo(() => {
-    const today = todayIso();
-    const hasToday = schedules.some((s) => s.date === today);
-    if (hasToday) return today;
-    const upcoming = schedules.find((s) => s.date >= today);
-    return upcoming?.date ?? schedules[schedules.length - 1]?.date ?? today;
-  }, [schedules]);
-
   const [tab, setTab] = useState<Tab>("today");
-  const [date, setDate] = useState(defaultDate);
+  const [date, setDate] = useState(todayIso);
   const [barangay, setBarangay] = useState("all");
   const [driver, setDriver] = useState("all");
   const [status, setStatus] = useState("all");
@@ -53,8 +42,8 @@ export default function CollectionMonitoringPageContent({
   );
 
   const kpis = useMemo(
-    () => computeMonitoringKpis(schedules, date, routesCount),
-    [schedules, date, routesCount]
+    () => computeMonitoringKpis(schedules, routesCount),
+    [schedules, routesCount]
   );
 
   const { slices, overallPercent } = useMemo(

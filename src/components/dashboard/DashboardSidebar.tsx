@@ -7,7 +7,6 @@ import {
   FileText,
   LayoutDashboard,
   Leaf,
-  LogOut,
   MapPin,
   Megaphone,
   MessageSquareWarning,
@@ -87,16 +86,10 @@ export default function DashboardSidebar({ open, onClose }: Props) {
           })}
         </nav>
 
-        <div className="border-t border-white/10 p-2">
-          <form action="/auth/signout" method="post">
-            <button
-              type="submit"
-              className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-xs font-medium text-orange-300 hover:bg-white/10"
-            >
-              <LogOut className="h-3.5 w-3.5" />
-              Logout
-            </button>
-          </form>
+        <div className="border-t border-white/10 px-3 py-3">
+          <p className="text-center text-[10px] font-medium tracking-wide text-emerald-200/60">
+            Ecotrack v00.1
+          </p>
         </div>
       </aside>
     </>

@@ -59,6 +59,11 @@ export default function UserPageContent({ initialUsers }: Props) {
     handleUpdated(user);
   }, [handleUpdated]);
 
+  const handleDelete = useCallback((id: string) => {
+    setUsers((prev) => prev.filter((u) => u.id !== id));
+    setViewing((v) => (v?.id === id ? null : v));
+  }, []);
+
   return (
     <>
       <div className="users-page flex h-full flex-col gap-3 overflow-hidden">
@@ -115,7 +120,8 @@ export default function UserPageContent({ initialUsers }: Props) {
         user={deactivating}
         open={!!deactivating}
         onClose={() => setDeactivating(null)}
-        onSuccess={handleDeactivate}
+        onDeactivateSuccess={handleDeactivate}
+        onDeleteSuccess={handleDelete}
       />
     </>
   );

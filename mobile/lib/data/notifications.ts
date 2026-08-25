@@ -1,3 +1,4 @@
+import { todayIso } from "../date";
 import type { AnnouncementItem } from "./announcements";
 import type { ScheduleItem } from "./schedules";
 
@@ -59,7 +60,7 @@ export function buildDriverNotifications(
   routeName?: string | null
 ): NotificationItem[] {
   const items: NotificationItem[] = [];
-  const today = new Date().toISOString().slice(0, 10);
+  const today = todayIso();
   const upcoming = schedules.find(
     (s) => s.date >= today && s.status === "pending"
   );

@@ -23,6 +23,8 @@ export type WeeklyScheduleItem = {
   id: string;
   day: string;
   date: string;
+  isoDate: string;
+  isToday: boolean;
   barangay: string;
   status: "completed" | "pending";
 };
@@ -89,11 +91,11 @@ export const DEFAULT_DASHBOARD_DATA: DashboardData = {
     { status: "cancelled", label: "Cancelled", count: 1, percentage: 5, color: "#ef4444" },
   ],
   weeklySchedule: [
-    { id: "1", day: "Mon", date: "July 20", barangay: "Upper Jasaan", status: "completed" },
-    { id: "2", day: "Tue", date: "July 21", barangay: "Nahalinan", status: "pending" },
-    { id: "3", day: "Wed", date: "July 22", barangay: "Lower Jasaan", status: "pending" },
-    { id: "4", day: "Thu", date: "July 23", barangay: "Solana", status: "pending" },
-    { id: "5", day: "Fri", date: "July 24", barangay: "Aplaya", status: "pending" },
+    { id: "1", day: "Mon", date: "July 20", isoDate: "2026-07-20", isToday: false, barangay: "Upper Jasaan", status: "completed" },
+    { id: "2", day: "Tue", date: "July 21", isoDate: "2026-07-21", isToday: false, barangay: "Nahalinan", status: "pending" },
+    { id: "3", day: "Wed", date: "July 22", isoDate: "2026-07-22", isToday: false, barangay: "Lower Jasaan", status: "pending" },
+    { id: "4", day: "Thu", date: "July 23", isoDate: "2026-07-23", isToday: false, barangay: "Solana", status: "pending" },
+    { id: "5", day: "Fri", date: "July 24", isoDate: "2026-07-24", isToday: false, barangay: "Aplaya", status: "pending" },
   ],
   announcements: [
     {

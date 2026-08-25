@@ -13,6 +13,7 @@ import {
   STATUS_OPTIONS,
   type Schedule,
   type ScheduleFormValues,
+  type ScheduleRouteOption,
   type ScheduleStatus,
 } from "@/types/schedules";
 
@@ -29,11 +30,29 @@ type Props = {
 const emptyForm: ScheduleFormValues = {
   barangay: "",
   collectionDate: "",
+  routeId: "",
   timeStart: "04:00",
   timeEnd: "08:00",
   driver: "",
   status: "pending",
 };
+
+function routeCoversBarangay(route: ScheduleRouteOption, barangay: string): boolean {
+  const target = barangay.trim().toLowerCase();
+  if (!target) return false;
+  if (route.area.toLowerCase() === target) return true;
+  return route.barangay
+    .split(",")
+    .map((s) => s.trim().toLowerCase())
+    .includes(target);
+}
+
+function findRouteForBarangay(
+  routes: ScheduleRouteOption[],
+  barangay: string
+): string {
+  return routes.find((r) => routeCoversBarangay(r, barangay))?.id ?? "";
+}
 
 export default function ScheduleFormModal({
   mode,
@@ -47,6 +66,7 @@ export default function ScheduleFormModal({
   const [form, setForm] = useState<ScheduleFormValues>(emptyForm);
   const [drivers, setDrivers] = useState<string[]>(driverOptions);
   const [barangays, setBarangays] = useState<string[]>(barangayOptions);
+  const [routes, setRoutes] = useState<ScheduleRouteOption[]>([]);
   const [optionsLoading, setOptionsLoading] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -56,9 +76,10 @@ export default function ScheduleFormModal({
     setError(null);
     setOptionsLoading(true);
     fetchScheduleFormOptions()
-      .then(({ driverOptions: freshDrivers, barangayOptions: freshBarangays }) => {
+      .then(({ driverOptions: freshDrivers, barangayOptions: freshBarangays, routeOptions }) => {
         setDrivers(freshDrivers);
         setBarangays(freshBarangays);
+        setRoutes(routeOptions);
       })
       .finally(() => setOptionsLoading(false));
     if (mode === "edit" && schedule) {
@@ -79,6 +100,20 @@ export default function ScheduleFormModal({
   if (form.barangay && !barangayChoices.includes(form.barangay)) {
     barangayChoices.unshift(form.barangay);
   }
+
+  const routeChoices = [...routes];
+  if (form.routeId && !routeChoices.some((r) => r.id === form.routeId) && schedule?.routeLabel) {
+    routeChoices.unshift({
+      id: form.routeId,
+      label: schedule.routeLabel,
+      barangay: schedule.barangay,
+      area: schedule.barangay,
+    });
+  }
+
+  const filteredRoutes = form.barangay
+    ? routeChoices.filter((r) => routeCoversBarangay(r, form.barangay))
+    : routeChoices;
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -137,7 +172,15 @@ export default function ScheduleFormModal({
                     barangayChoices.filter((b) => b !== "Maintenance").length === 0
                   }
                   value={form.barangay}
-                  onChange={(e) => setField("barangay", e.target.value)}
+                  onChange={(e) => {
+                    const barangay = e.target.value;
+                    const matchedRoute = findRouteForBarangay(routes, barangay);
+                    setForm((prev) => ({
+                      ...prev,
+                      barangay,
+                      routeId: matchedRoute || prev.routeId,
+                    }));
+                  }}
                   className={selectClass}
                 >
                   <option value="">
@@ -155,6 +198,33 @@ export default function ScheduleFormModal({
                 <p className="mt-1 text-xs text-amber-600">
                   No barangays in the database. Add barangays under Barangay Management or run{" "}
                   <code className="text-xs">npm run seed</code>.
+                </p>
+              )}
+            </Field>
+
+            <Field label="Route">
+              <div className="relative">
+                <select
+                  required={form.barangay !== "Maintenance"}
+                  disabled={optionsLoading || routeChoices.length === 0}
+                  value={form.routeId}
+                  onChange={(e) => setField("routeId", e.target.value)}
+                  className={selectClass}
+                >
+                  <option value="">
+                    {optionsLoading ? "Loading routes..." : "Select Route"}
+                  </option>
+                  {(filteredRoutes.length > 0 ? filteredRoutes : routeChoices).map((r) => (
+                    <option key={r.id} value={r.id}>
+                      {r.label}
+                    </option>
+                  ))}
+                </select>
+                <ChevronDown className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
+              </div>
+              {!optionsLoading && routeChoices.length === 0 && (
+                <p className="mt-1 text-xs text-amber-600">
+                  No routes found. Add a route under Route Management first.
                 </p>
               )}
             </Field>

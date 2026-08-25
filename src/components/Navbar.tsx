@@ -11,7 +11,7 @@ import {
   User,
   UserPlus,
 } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Logo from "./Logo";
 
 type NavbarProps = {
@@ -20,37 +20,75 @@ type NavbarProps = {
 };
 
 const navLinks = [
-  { href: "#home", label: "Home", icon: Home, active: true },
+  { href: "#home", label: "Home", icon: Home },
   { href: "#about", label: "About Us", icon: Info },
   { href: "#services", label: "Services", icon: Truck },
   { href: "#contact", label: "Contact Us", icon: Mail },
-];
+] as const;
 
 export default function Navbar({ onLoginClick, onRegisterClick }: NavbarProps) {
   const [loginOpen, setLoginOpen] = useState(false);
+  const [activeHref, setActiveHref] = useState<(typeof navLinks)[number]["href"]>("#home");
+
+  useEffect(() => {
+    const elements = navLinks
+      .map(({ href }) => document.getElementById(href.slice(1)))
+      .filter((el): el is HTMLElement => el != null);
+
+    if (elements.length === 0) return;
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        const visible = entries
+          .filter((entry) => entry.isIntersecting)
+          .sort((a, b) => b.intersectionRatio - a.intersectionRatio);
+
+        const top = visible[0];
+        if (top?.target.id) {
+          setActiveHref(`#${top.target.id}` as (typeof navLinks)[number]["href"]);
+        }
+      },
+      {
+        rootMargin: "-35% 0px -45% 0px",
+        threshold: [0, 0.15, 0.35, 0.55, 0.75, 1],
+      }
+    );
+
+    elements.forEach((el) => observer.observe(el));
+    return () => observer.disconnect();
+  }, []);
 
   return (
     <header className="sticky top-0 z-40 border-b border-gray-100 bg-white/95 backdrop-blur-sm">
       <div className="mx-auto flex max-w-7xl items-center justify-between gap-4 px-4 py-3 sm:px-6 lg:px-8">
-        <Link href="/" className="shrink-0">
+        <Link href="/" className="shrink-0" onClick={() => setActiveHref("#home")}>
           <Logo />
         </Link>
 
         <nav className="hidden items-center gap-1 lg:flex">
-          {navLinks.map(({ href, label, icon: Icon, active }) => (
-            <Link
-              key={label}
-              href={href}
-              className={`flex items-center gap-1.5 rounded-lg px-3 py-2 text-sm font-medium transition-colors ${
-                active
-                  ? "border-b-2 border-eco-primary text-eco-primary"
-                  : "text-gray-600 hover:text-eco-primary"
-              }`}
-            >
-              <Icon className="h-4 w-4" />
-              {label}
-            </Link>
-          ))}
+          {navLinks.map(({ href, label, icon: Icon }) => {
+            const active = activeHref === href;
+
+            return (
+              <Link
+                key={label}
+                href={href}
+                onClick={() => setActiveHref(href)}
+                className={`relative flex items-center gap-1.5 px-3 py-2 text-sm font-medium transition-colors ${
+                  active ? "text-eco-primary" : "text-gray-600 hover:text-eco-primary"
+                }`}
+              >
+                <Icon className="h-4 w-4" />
+                {label}
+                {active ? (
+                  <span
+                    aria-hidden
+                    className="absolute inset-x-2 -bottom-0.5 h-[3px] rounded-full bg-eco-primary"
+                  />
+                ) : null}
+              </Link>
+            );
+          })}
         </nav>
 
         <div className="flex items-center gap-2">

@@ -1,3 +1,4 @@
+import { addDaysIso, todayIso } from "@/lib/date";
 import type {
   CollectionActivity,
   CollectionMapMarker,
@@ -60,14 +61,14 @@ export function filterSchedules(
 
 export function computeMonitoringKpis(
   schedules: Schedule[],
-  date: string,
   routesCount: number
 ): CollectionMonitoringKpis {
+  const today = todayIso();
   const daySchedules = schedules.filter(
-    (s) => s.date === date && isOperationalSchedule(s)
+    (s) => s.date === today && isOperationalSchedule(s)
   );
   const futurePending = schedules.filter(
-    (s) => s.date > date && s.status === "pending" && isOperationalSchedule(s)
+    (s) => s.date > today && s.status === "pending" && isOperationalSchedule(s)
   );
 
   return {
@@ -146,6 +147,11 @@ export function buildMapMarkers(daySchedules: Schedule[]): CollectionMapMarker[]
 }
 
 function findRouteForSchedule(schedule: Schedule, routes: Route[]): Route | undefined {
+  if (schedule.routeId) {
+    const byId = routes.find((r) => r.id === schedule.routeId);
+    if (byId) return byId;
+  }
+
   const barangay = schedule.barangay.trim().toLowerCase();
 
   return routes.find((route) => {
@@ -200,7 +206,7 @@ export function buildRecentActivity(
 ): CollectionActivity[] {
   const items: CollectionActivity[] = [];
   const selected = schedules.find((s) => s.date === date && isOperationalSchedule(s));
-  const tomorrow = addDays(date, 1);
+  const tomorrow = addDaysIso(date, 1);
   const tomorrowSchedule = schedules.find(
     (s) => s.date === tomorrow && isOperationalSchedule(s)
   );
@@ -252,12 +258,6 @@ export function buildRecentActivity(
   }
 
   return items.slice(0, 5);
-}
-
-function addDays(dateStr: string, days: number): string {
-  const d = new Date(`${dateStr}T12:00:00`);
-  d.setDate(d.getDate() + days);
-  return d.toISOString().slice(0, 10);
 }
 
 function formatActivityTime(time: string): string {

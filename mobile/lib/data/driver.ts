@@ -1,3 +1,4 @@
+import { todayIso } from "../date";
 import type { ScheduleItem } from "./schedules";
 
 export type DriverStats = {
@@ -6,10 +7,6 @@ export type DriverStats = {
   pending: number;
   inProgress: number;
 };
-
-function todayIso(): string {
-  return new Date().toISOString().slice(0, 10);
-}
 
 function namesMatch(scheduleDriver: string | null, driverName: string): boolean {
   if (!scheduleDriver) return true;

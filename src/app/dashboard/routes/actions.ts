@@ -8,8 +8,10 @@ import {
 import {
   buildFallbackStops,
   formValuesToRow,
+  generateRouteDefaults,
   mapRouteRow,
   mapRouteStopRow,
+  primaryBarangayFromList,
   stopsToRows,
 } from "@/lib/routes/format";
 import { createClient } from "@/lib/supabase/server";
@@ -19,13 +21,15 @@ type ActionResult =
   | { success: true; route?: Route }
   | { success: false; error: string };
 
-function validateForm(values: RouteFormValues): string | null {
-  if (!values.routeCode.trim()) return "Route code is required.";
-  if (!values.name.trim()) return "Route name is required.";
-  if (!values.barangay.trim()) return "Barangay is required.";
-  if (!values.area.trim()) return "Area is required.";
+function validateForm(values: RouteFormValues, isCreate = false): string | null {
+  if (!isCreate) {
+    if (!values.routeCode.trim()) return "Route code is required.";
+    if (!values.name.trim()) return "Route name is required.";
+    if (!values.vehicleId.trim()) return "Vehicle ID is required.";
+  }
+  if (!values.barangay.trim()) return "Area is required.";
+  if (!primaryBarangayFromList(values.barangay)) return "Area is required.";
   if (!values.driverName.trim()) return "Driver is required.";
-  if (!values.vehicleId.trim()) return "Vehicle ID is required.";
   const distance = parseFloat(values.distanceKm);
   if (Number.isNaN(distance) || distance < 0) return "Distance must be valid.";
   const minutes = parseInt(values.estimatedMinutes, 10);
@@ -76,19 +80,28 @@ async function saveRouteStops(
 }
 
 export async function createRoute(values: RouteFormValues): Promise<ActionResult> {
-  const err = validateForm(values);
+  const err = validateForm(values, true);
   if (err) return { success: false, error: err };
 
   const supabase = await createClient();
+  const { count } = await supabase
+    .from("routes")
+    .select("*", { count: "exact", head: true });
+
+  const prepared: RouteFormValues = {
+    ...values,
+    ...generateRouteDefaults(count ?? 0, values),
+  };
+
   const { data, error } = await supabase
     .from("routes")
-    .insert(formValuesToRow(values))
+    .insert(formValuesToRow(prepared))
     .select()
     .single();
 
   if (error) return { success: false, error: error.message };
 
-  const stopError = await saveRouteStops(data.id, values);
+  const stopError = await saveRouteStops(data.id, prepared);
   if (stopError) {
     await supabase.from("routes").delete().eq("id", data.id);
     return { success: false, error: stopError };
@@ -96,6 +109,7 @@ export async function createRoute(values: RouteFormValues): Promise<ActionResult
 
   const route = await fetchRouteById(data.id);
   revalidatePath("/dashboard/routes");
+  revalidatePath("/dashboard/schedules");
   revalidatePath("/dashboard/collection");
   revalidatePath("/dashboard");
   return { success: true, route: route ?? undefined };
@@ -121,6 +135,7 @@ export async function updateRoute(
 
   const route = await fetchRouteById(id);
   revalidatePath("/dashboard/routes");
+  revalidatePath("/dashboard/schedules");
   revalidatePath("/dashboard/collection");
   revalidatePath("/dashboard");
   return { success: true, route: route ?? undefined };
@@ -133,6 +148,7 @@ export async function deleteRoute(id: string): Promise<ActionResult> {
   if (error) return { success: false, error: error.message };
 
   revalidatePath("/dashboard/routes");
+  revalidatePath("/dashboard/schedules");
   revalidatePath("/dashboard/collection");
   revalidatePath("/dashboard");
   return { success: true };
