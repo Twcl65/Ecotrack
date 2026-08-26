@@ -14,6 +14,7 @@ import AppButton from "@/components/AppButton";
 import AppInput from "@/components/AppInput";
 import Logo from "@/components/Logo";
 import { useAuth } from "@/context/AuthContext";
+import { isSupabaseConfigured } from "@/lib/supabase";
 import { colors, fontSize, radius, spacing } from "@/constants/theme";
 
 export default function LoginScreen() {
@@ -27,6 +28,10 @@ export default function LoginScreen() {
   const [error, setError] = useState<string | null>(null);
 
   async function handleLogin() {
+    if (!isSupabaseConfigured) {
+      setError("The app is missing its server connection. Rebuild the APK with Supabase keys set.");
+      return;
+    }
     if (!email.trim()) {
       setError("Enter your email or username.");
       return;

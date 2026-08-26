@@ -1,3 +1,4 @@
+import Image from "next/image";
 import { ArrowRight, BarChart3, Map, Truck } from "lucide-react";
 import type { FeatureCard } from "@/types/database";
 
@@ -12,35 +13,19 @@ const iconMap = {
 };
 
 const illustrationMap = {
-  route: (
-    <div className="relative flex h-36 items-center justify-center rounded-xl bg-gradient-to-br from-blue-50 to-green-50">
-      <div className="absolute inset-4 rounded-lg border-2 border-dashed border-eco-primary/30" />
-      <Map className="relative h-16 w-16 text-eco-primary/60" />
-      <div className="absolute bottom-6 left-8 h-3 w-3 rounded-full bg-eco-primary" />
-      <div className="absolute right-10 top-8 h-3 w-3 rounded-full bg-blue-400" />
-      <div className="absolute left-1/2 top-1/2 h-2 w-16 -translate-x-1/2 -translate-y-1/2 rotate-45 rounded-full bg-eco-primary/40" />
-    </div>
-  ),
-  collection: (
-    <div className="relative flex h-36 items-end justify-center overflow-hidden rounded-xl bg-gradient-to-br from-green-50 to-emerald-100">
-      <div className="mb-4 flex h-20 w-32 items-center justify-center rounded-t-lg bg-eco-primary">
-        <Truck className="h-10 w-10 text-white" />
-      </div>
-      <div className="absolute bottom-0 h-2 w-full bg-gray-300/50" />
-    </div>
-  ),
-  analytics: (
-    <div className="relative flex h-36 items-center justify-center rounded-xl bg-gradient-to-br from-purple-50 to-blue-50">
-      <div className="flex items-end gap-2">
-        <div className="h-8 w-5 rounded-t bg-eco-primary/60" />
-        <div className="h-14 w-5 rounded-t bg-eco-primary/80" />
-        <div className="h-10 w-5 rounded-t bg-blue-400/70" />
-        <div className="h-16 w-5 rounded-t bg-eco-primary" />
-      </div>
-      <BarChart3 className="absolute right-6 top-6 h-8 w-8 text-eco-primary/30" />
-    </div>
-  ),
-};
+  route: {
+    src: "/service-route.png",
+    alt: "Route planning map across Jasaan barangays",
+  },
+  collection: {
+    src: "/service-collection.png",
+    alt: "Waste collection truck monitoring in the community",
+  },
+  analytics: {
+    src: "/service-analytics.png",
+    alt: "Reporting and analytics dashboard for waste collection",
+  },
+} as const;
 
 export default function FeatureCards({ features }: FeatureCardsProps) {
   return (
@@ -58,12 +43,23 @@ export default function FeatureCards({ features }: FeatureCardsProps) {
         <div className="grid gap-6 md:grid-cols-3">
           {features.map((feature) => {
             const Icon = iconMap[feature.icon_type] ?? Map;
+            const illustration =
+              illustrationMap[feature.icon_type] ?? illustrationMap.route;
+
             return (
               <article
                 key={feature.id}
                 className="overflow-hidden rounded-2xl border border-gray-100 bg-white shadow-sm transition hover:shadow-md"
               >
-                {illustrationMap[feature.icon_type]}
+                <div className="relative h-40 overflow-hidden bg-eco-light">
+                  <Image
+                    src={illustration.src}
+                    alt={illustration.alt}
+                    fill
+                    sizes="(min-width: 768px) 33vw, 100vw"
+                    className="object-cover"
+                  />
+                </div>
                 <div className="p-6">
                   <div className="mb-2 flex items-center gap-2">
                     <Icon className="h-5 w-5 text-eco-primary" />

@@ -30,16 +30,12 @@ function RootNavigator() {
   const [splashMinDone, setSplashMinDone] = useState(false);
 
   useEffect(() => {
+    hideNativeSplash();
     const timer = setTimeout(() => setSplashMinDone(true), SPLASH_MIN_MS);
     return () => clearTimeout(timer);
   }, []);
 
   const showSplash = loading || !splashMinDone;
-
-  useEffect(() => {
-    if (showSplash) return;
-    hideNativeSplash();
-  }, [showSplash]);
 
   useEffect(() => {
     if (showSplash) return;

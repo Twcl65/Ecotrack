@@ -15,7 +15,7 @@ import {
   signUp as authSignUp,
   type UserProfile,
 } from "@/lib/auth";
-import { supabase } from "@/lib/supabase";
+import { isSupabaseConfigured, supabase } from "@/lib/supabase";
 
 type AuthContextValue = {
   session: Session | null;
@@ -43,7 +43,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const loadProfile = useCallback(async (userId: string) => {
     if (signingOutRef.current) return;
 
-    const data = await fetchUserProfile(userId);
+    const data = await fetchUserProfile(userId).catch(() => null);
     if (signingOutRef.current) return;
 
     const {
@@ -55,15 +55,38 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   useEffect(() => {
-    supabase.auth.getSession().then(({ data }) => {
-      setSession(data.session);
-      if (data.session?.user) {
-        loadProfile(data.session.user.id).finally(() => setLoading(false));
-      } else {
-        setProfile(null);
-        setLoading(false);
+    let cancelled = false;
+    const failSafe = setTimeout(() => {
+      if (!cancelled) setLoading(false);
+    }, 8000);
+
+    async function initSession() {
+      try {
+        if (!isSupabaseConfigured) {
+          setSession(null);
+          setProfile(null);
+          return;
+        }
+
+        const { data } = await supabase.auth.getSession();
+        if (cancelled) return;
+        setSession(data.session);
+        if (data.session?.user) {
+          await loadProfile(data.session.user.id);
+        } else {
+          setProfile(null);
+        }
+      } catch {
+        if (!cancelled) {
+          setSession(null);
+          setProfile(null);
+        }
+      } finally {
+        if (!cancelled) setLoading(false);
       }
-    });
+    }
+
+    void initSession();
 
     const { data: listener } = supabase.auth.onAuthStateChange(
       async (event, nextSession) => {
@@ -79,7 +102,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       }
     );
 
-    return () => listener.subscription.unsubscribe();
+    return () => {
+      cancelled = true;
+      clearTimeout(failSafe);
+      listener.subscription.unsubscribe();
+    };
   }, [loadProfile]);
 
   const signIn = useCallback(async (email: string, password: string) => {

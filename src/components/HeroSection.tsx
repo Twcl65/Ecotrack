@@ -35,16 +35,15 @@ export default function HeroSection() {
   return (
     <section
       id="home"
-      className="relative overflow-hidden bg-gradient-to-br from-eco-light/60 via-white to-blue-50/40"
+      className="relative overflow-hidden bg-eco-light"
     >
       <div
-        className="absolute inset-0 bg-cover bg-center opacity-20"
-        style={{
-          backgroundImage:
-            "url('https://images.unsplash.com/photo-1532996122724-e3c354a0b782?w=1600&q=80')",
-        }}
+        className="absolute inset-0 bg-cover bg-center bg-no-repeat"
+        style={{ backgroundImage: "url('/hero-background.jpg')" }}
+        aria-hidden
       />
-      <div className="absolute inset-0 bg-gradient-to-r from-white via-white/90 to-white/70" />
+      <div className="absolute inset-0 bg-gradient-to-r from-white via-white/88 to-emerald-950/20" />
+      <div className="absolute inset-0 bg-gradient-to-t from-eco-dark/25 via-transparent to-white/30" />
 
       <div className="relative mx-auto max-w-7xl px-4 py-16 sm:px-6 sm:py-20 lg:px-8 lg:py-24">
         <div className="max-w-2xl">
