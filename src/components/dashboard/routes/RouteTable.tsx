@@ -3,16 +3,17 @@
 import {
   ChevronLeft,
   ChevronRight,
+  Archive,
   Clock,
   Eye,
   Pencil,
   Plus,
   Route as RouteIcon,
   Search,
-  Trash2,
   User,
 } from "lucide-react";
 import { useMemo, useState } from "react";
+import ArchivedBadge from "../ArchivedBadge";
 import RouteStatusBadge from "./RouteStatusBadge";
 import { todayIso } from "@/lib/date";
 import type { Route, RouteStatus } from "@/types/routes";
@@ -53,7 +54,9 @@ export default function RouteTable({
   onDelete,
 }: Props) {
   const [search, setSearch] = useState("");
-  const [statusFilter, setStatusFilter] = useState<RouteStatus | "all">("all");
+  const [statusFilter, setStatusFilter] = useState<
+    RouteStatus | "archived" | "all"
+  >("all");
   const [driverFilter, setDriverFilter] = useState("all");
   const [barangayFilter, setBarangayFilter] = useState("all");
   const [dateFilter, setDateFilter] = useState(todayIso());
@@ -64,10 +67,16 @@ export default function RouteTable({
     return [...routes]
       .sort(
         (a, b) =>
+          Number(Boolean(a.archivedAt)) - Number(Boolean(b.archivedAt)) ||
           new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
       )
       .filter((r) => {
-      if (statusFilter !== "all" && r.status !== statusFilter) return false;
+      if (statusFilter === "archived" && !r.archivedAt) return false;
+      if (
+        statusFilter !== "all" &&
+        statusFilter !== "archived" &&
+        (r.archivedAt || r.status !== statusFilter)
+      ) return false;
       if (driverFilter !== "all" && r.driverName !== driverFilter) return false;
       if (barangayFilter !== "all") {
         const hay = `${r.barangay} ${r.area}`.toLowerCase();
@@ -115,11 +124,12 @@ export default function RouteTable({
           className="w-full sm:w-[130px]"
           value={statusFilter}
           onChange={(v) => {
-            setStatusFilter(v as RouteStatus | "all");
+            setStatusFilter(v as RouteStatus | "archived" | "all");
             setPage(1);
           }}
           options={[
             { value: "all", label: "All Status" },
+            { value: "archived", label: "Archived" },
             ...ROUTE_STATUS_OPTIONS.map((o) => ({ value: o.value, label: o.label })),
           ]}
         />
@@ -231,18 +241,22 @@ export default function RouteTable({
                       </div>
                     </td>
                     <td className="px-4 py-3">
-                      <RouteStatusBadge status={route.status} />
+                      {route.archivedAt ? (
+                        <ArchivedBadge />
+                      ) : (
+                        <RouteStatusBadge status={route.status} />
+                      )}
                     </td>
                     <td className="px-4 py-3">
                       <div className="flex items-center justify-center gap-1">
                         <IconButton label="View" onClick={() => onView(route)} color="text-blue-600">
                           <Eye className="h-4 w-4" />
                         </IconButton>
-                        <IconButton label="Edit" onClick={() => onEdit(route)} color="text-emerald-600">
+                        <IconButton label="Edit" onClick={() => onEdit(route)} color="text-emerald-600" disabled={Boolean(route.archivedAt)}>
                           <Pencil className="h-4 w-4" />
                         </IconButton>
-                        <IconButton label="Delete" onClick={() => onDelete(route)} color="text-red-500">
-                          <Trash2 className="h-4 w-4" />
+                        <IconButton label="Archive" onClick={() => onDelete(route)} color="text-gray-500" disabled={Boolean(route.archivedAt)}>
+                          <Archive className="h-4 w-4" />
                         </IconButton>
                       </div>
                     </td>
@@ -311,18 +325,21 @@ function IconButton({
   label,
   onClick,
   color,
+  disabled,
 }: {
   children: React.ReactNode;
   label: string;
   onClick: () => void;
   color: string;
+  disabled?: boolean;
 }) {
   return (
     <button
       type="button"
       aria-label={label}
       onClick={onClick}
-      className={`rounded-lg p-1.5 hover:bg-gray-100 ${color}`}
+      disabled={disabled}
+      className={`rounded-lg p-1.5 hover:bg-gray-100 disabled:cursor-not-allowed disabled:opacity-40 ${color}`}
     >
       {children}
     </button>

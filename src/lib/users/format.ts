@@ -50,6 +50,8 @@ export function mapSystemUserRow(row: {
   role: string;
   username: string;
   status: string;
+  email_verified_at: string | null;
+  archived_at: string | null;
   avatar_url: string | null;
   last_login_at: string | null;
   created_at: string;
@@ -73,6 +75,8 @@ export function mapSystemUserRow(row: {
     role: row.role as SystemUser["role"],
     username: row.username,
     status: row.status as SystemUser["status"],
+    emailVerifiedAt: row.email_verified_at,
+    archivedAt: row.archived_at,
     avatarUrl: row.avatar_url ?? avatarUrlForUser(fullName, row.email),
     lastLoginAt: row.last_login_at,
     lastLoginLabel: row.last_login_at

@@ -5,7 +5,7 @@ import { getScheduleBarangayOptions, getSchedules } from "@/lib/schedules/data";
 
 export default async function SchedulesPage() {
   const [schedules, driverOptions, barangayOptions, announcements] = await Promise.all([
-    getSchedules(),
+    getSchedules(true),
     getDriverOptions(),
     getScheduleBarangayOptions(),
     getAnnouncements(),

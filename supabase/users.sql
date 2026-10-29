@@ -1,8 +1,8 @@
 -- System users for User Management page (run in Supabase SQL Editor)
 -- Passwords are stored in Supabase Auth (auth.users), not in this table.
--- Users created via "Add New User" share the same id as their auth account.
--- Seed rows below are directory/demo data only — they cannot sign in until
--- you add them through the dashboard (or create matching auth users manually).
+-- Users created via "Add New User" or mobile registration share their auth id.
+-- Remove the demo directory rows previously seeded by this script.
+-- Existing Supabase Auth accounts are also imported into the directory.
 
 CREATE TABLE IF NOT EXISTS system_users (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -17,9 +17,16 @@ CREATE TABLE IF NOT EXISTS system_users (
   status TEXT NOT NULL DEFAULT 'active' CHECK (status IN ('active', 'inactive')),
   avatar_url TEXT,
   last_login_at TIMESTAMPTZ,
+  email_verified_at TIMESTAMPTZ DEFAULT NOW(),
+  archived_at TIMESTAMPTZ,
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
+
+ALTER TABLE system_users
+  ADD COLUMN IF NOT EXISTS email_verified_at TIMESTAMPTZ DEFAULT NOW();
+ALTER TABLE system_users
+  ADD COLUMN IF NOT EXISTS archived_at TIMESTAMPTZ;
 
 ALTER TABLE system_users ENABLE ROW LEVEL SECURITY;
 
@@ -33,33 +40,182 @@ CREATE POLICY "Auth insert system_users" ON system_users FOR INSERT TO authentic
 CREATE POLICY "Auth update system_users" ON system_users FOR UPDATE TO authenticated USING (true);
 CREATE POLICY "Auth delete system_users" ON system_users FOR DELETE TO authenticated USING (true);
 
-INSERT INTO system_users (user_code, first_name, middle_name, last_name, email, phone, role, username, status, last_login_at, created_at) VALUES
-  ('USR-2025-0028', 'Juan', 'M', 'Dela Cruz', 'juan.delacruz@ecotrack.com', '09123456789', 'admin', 'juan.admin', 'active', '2026-05-26 10:05:00+08', '2025-04-15 09:15:00+08'),
-  ('USR-2025-0027', 'Maria', NULL, 'Santos', 'maria.santos@ecotrack.com', '09171234567', 'admin', 'maria.admin', 'active', '2026-05-25 08:30:00+08', '2025-05-01 10:00:00+08'),
-  ('USR-2025-0026', 'Pedro', 'R', 'Reyes', 'pedro.reyes@ecotrack.com', '09181234567', 'driver', 'pedro.driver', 'active', '2026-05-26 06:00:00+08', '2025-06-10 07:45:00+08'),
-  ('USR-2025-0025', 'Ana', NULL, 'Garcia', 'ana.garcia@ecotrack.com', '09191234567', 'driver', 'ana.driver', 'active', '2026-05-24 14:20:00+08', '2025-06-15 11:30:00+08'),
-  ('USR-2025-0024', 'Carlos', 'L', 'Mendoza', 'carlos.mendoza@ecotrack.com', '09201234567', 'driver', 'carlos.driver', 'active', '2026-05-23 05:45:00+08', '2025-07-01 09:00:00+08'),
-  ('USR-2025-0023', 'Nhea', NULL, 'Ting', 'nhea.ting@gmail.com', '09121382526', 'resident', 'nhea.ting', 'active', '2026-05-20 19:00:00+08', '2025-08-01 16:00:00+08'),
-  ('USR-2025-0022', 'Anna', 'B', 'Anton', 'anna.anton@gmail.com', '09171234568', 'resident', 'anna.anton', 'active', '2026-05-18 12:00:00+08', '2025-08-05 13:20:00+08'),
-  ('USR-2025-0021', 'Sheena', NULL, 'Lim', 'sheena.lim@gmail.com', '09181234568', 'resident', 'sheena.lim', 'active', NULL, '2025-08-10 10:15:00+08'),
-  ('USR-2025-0020', 'Aiza', 'M', 'Kim', 'aiza.kim@gmail.com', '09191234568', 'resident', 'aiza.kim', 'active', '2026-05-15 08:00:00+08', '2025-08-12 09:30:00+08'),
-  ('USR-2025-0019', 'Mark', NULL, 'Villanueva', 'mark.v@gmail.com', '09201234568', 'resident', 'mark.v', 'active', '2026-05-10 21:00:00+08', '2025-09-01 14:00:00+08'),
-  ('USR-2025-0018', 'Joy', 'C', 'Tan', 'joy.tan@gmail.com', '09211234568', 'resident', 'joy.tan', 'active', NULL, '2025-09-15 08:45:00+08'),
-  ('USR-2025-0017', 'Ryan', NULL, 'Go', 'ryan.go@gmail.com', '09221234568', 'resident', 'ryan.go', 'active', '2026-05-22 07:30:00+08', '2025-10-01 11:00:00+08'),
-  ('USR-2025-0016', 'Liza', 'P', 'Cruz', 'liza.cruz@gmail.com', '09231234568', 'resident', 'liza.cruz', 'active', '2026-05-19 18:00:00+08', '2025-10-20 15:30:00+08'),
-  ('USR-2025-0015', 'John', NULL, 'Doe', 'john.doe@gmail.com', '09241234568', 'resident', 'john.doe', 'active', NULL, '2025-11-01 09:00:00+08'),
-  ('USR-2025-0014', 'Grace', 'A', 'Lee', 'grace.lee@gmail.com', '09251234568', 'resident', 'grace.lee', 'active', '2026-05-21 10:00:00+08', '2025-11-15 10:45:00+08'),
-  ('USR-2025-0013', 'Paul', NULL, 'Ng', 'paul.ng@gmail.com', '09261234568', 'resident', 'paul.ng', 'active', NULL, '2025-12-01 08:00:00+08'),
-  ('USR-2025-0012', 'Cathy', 'R', 'Ong', 'cathy.ong@gmail.com', '09271234568', 'resident', 'cathy.ong', 'active', '2026-05-17 16:00:00+08', '2025-12-10 12:00:00+08'),
-  ('USR-2025-0011', 'Dennis', NULL, 'Yu', 'dennis.yu@gmail.com', '09281234568', 'resident', 'dennis.yu', 'active', NULL, '2026-01-05 09:30:00+08'),
-  ('USR-2025-0010', 'Ella', 'S', 'Wong', 'ella.wong@gmail.com', '09291234568', 'resident', 'ella.wong', 'active', '2026-05-14 20:00:00+08', '2026-01-20 14:15:00+08'),
-  ('USR-2025-0009', 'Frank', NULL, 'Chua', 'frank.chua@gmail.com', '09301234568', 'resident', 'frank.chua', 'active', NULL, '2026-02-01 11:00:00+08'),
-  ('USR-2025-0008', 'Gina', 'T', 'Ramos', 'gina.ramos@gmail.com', '09311234568', 'resident', 'gina.ramos', 'active', '2026-05-12 09:00:00+08', '2026-02-14 16:30:00+08'),
-  ('USR-2025-0007', 'Henry', NULL, 'Sy', 'henry.sy@gmail.com', '09321234568', 'resident', 'henry.sy', 'inactive', NULL, '2026-03-01 08:00:00+08'),
-  ('USR-2025-0006', 'Ivy', 'L', 'Chan', 'ivy.chan@gmail.com', '09331234568', 'resident', 'ivy.chan', 'inactive', NULL, '2026-03-15 10:00:00+08'),
-  ('USR-2025-0005', 'Kevin', NULL, 'Torres', 'kevin.torres@gmail.com', '09341234568', 'resident', 'kevin.torres', 'active', '2026-05-11 13:00:00+08', '2026-04-01 09:00:00+08'),
-  ('USR-2025-0004', 'Laura', 'M', 'Flores', 'laura.flores@gmail.com', '09351234568', 'resident', 'laura.flores', 'active', NULL, '2026-04-10 11:30:00+08'),
-  ('USR-2025-0003', 'Miguel', NULL, 'Castro', 'miguel.castro@gmail.com', '09361234568', 'resident', 'miguel.castro', 'active', '2026-05-09 08:00:00+08', '2026-04-20 15:00:00+08'),
-  ('USR-2025-0002', 'Nina', 'D', 'Aquino', 'nina.aquino@gmail.com', '09371234568', 'resident', 'nina.aquino', 'active', NULL, '2026-05-01 10:00:00+08'),
-  ('USR-2025-0001', 'Oscar', NULL, 'Bautista', 'oscar.bautista@gmail.com', '09381234568', 'resident', 'oscar.bautista', 'active', '2026-05-08 17:00:00+08', '2026-05-10 08:30:00+08')
-ON CONFLICT (user_code) DO NOTHING;
+DELETE FROM system_users
+WHERE user_code BETWEEN 'USR-2025-0001' AND 'USR-2025-0028';
+
+-- Keep mobile signups visible in the admin User Management directory.
+-- Run this script after schema.sql so the profiles table and signup trigger exist.
+CREATE OR REPLACE FUNCTION public.handle_new_user()
+RETURNS TRIGGER AS $$
+DECLARE
+  v_full_name TEXT;
+  v_first_name TEXT;
+  v_last_name TEXT;
+  v_username TEXT;
+BEGIN
+  v_full_name := regexp_replace(
+    btrim(COALESCE(NEW.raw_user_meta_data->>'full_name', '')),
+    '\s+',
+    ' ',
+    'g'
+  );
+  IF v_full_name = '' THEN
+    v_full_name := split_part(COALESCE(NEW.email, ''), '@', 1);
+  END IF;
+  IF v_full_name = '' THEN
+    v_full_name := 'Resident';
+  END IF;
+
+  v_first_name := split_part(v_full_name, ' ', 1);
+  v_last_name := btrim(substr(v_full_name, length(v_first_name) + 1));
+  v_username := lower(COALESCE(
+    NULLIF(NEW.raw_user_meta_data->>'username', ''),
+    split_part(COALESCE(NEW.email, ''), '@', 1),
+    'resident'
+  ));
+
+  IF EXISTS (
+    SELECT 1 FROM public.system_users AS existing_user
+    WHERE existing_user.username = v_username
+  ) OR EXISTS (
+    SELECT 1 FROM public.profiles AS existing_profile
+    WHERE existing_profile.username = v_username
+  ) THEN
+    v_username := v_username || '.' || replace(NEW.id::TEXT, '-', '');
+  END IF;
+
+  INSERT INTO public.profiles (id, username, full_name, role, email, phone)
+  VALUES (
+    NEW.id,
+    v_username,
+    v_full_name,
+    'viewer',
+    NEW.email,
+    COALESCE(NEW.raw_user_meta_data->>'phone', '')
+  );
+
+  INSERT INTO public.system_users (
+    id,
+    user_code,
+    first_name,
+    middle_name,
+    last_name,
+    email,
+    phone,
+    role,
+    username,
+    status,
+    email_verified_at
+  )
+  VALUES (
+    NEW.id,
+    'USR-' || EXTRACT(YEAR FROM NOW())::TEXT || '-' || upper(replace(NEW.id::TEXT, '-', '')),
+    v_first_name,
+    NULL,
+    v_last_name,
+    NEW.email,
+    COALESCE(NEW.raw_user_meta_data->>'phone', ''),
+    'resident',
+    v_username,
+    'active',
+    NEW.email_confirmed_at
+  )
+  ON CONFLICT (id) DO NOTHING;
+
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+DROP TRIGGER IF EXISTS on_auth_user_created ON auth.users;
+CREATE TRIGGER on_auth_user_created
+  AFTER INSERT ON auth.users
+  FOR EACH ROW EXECUTE FUNCTION public.handle_new_user();
+
+INSERT INTO public.system_users (
+  id,
+  user_code,
+  first_name,
+  middle_name,
+  last_name,
+  email,
+  phone,
+  role,
+  username,
+  status,
+  email_verified_at
+)
+SELECT
+  auth_user.id,
+  'USR-' || EXTRACT(YEAR FROM NOW())::TEXT || '-' || upper(replace(auth_user.id::TEXT, '-', '')),
+  split_part(user_data.full_name, ' ', 1),
+  NULL,
+  COALESCE(NULLIF(btrim(substr(user_data.full_name, length(split_part(user_data.full_name, ' ', 1)) + 1)), ''), 'Resident'),
+  auth_user.email,
+  COALESCE(user_data.phone, ''),
+  CASE user_data.profile_role
+    WHEN 'administrator' THEN 'admin'
+    WHEN 'admin' THEN 'admin'
+    WHEN 'driver' THEN 'driver'
+    ELSE 'resident'
+  END,
+  CASE
+    WHEN EXISTS (
+      SELECT 1
+      FROM public.system_users AS existing_user
+      WHERE existing_user.username = user_data.username
+        AND existing_user.id <> auth_user.id
+    ) THEN user_data.username || '.' || replace(auth_user.id::TEXT, '-', '')
+    ELSE user_data.username
+  END,
+  'active',
+  auth_user.email_confirmed_at
+FROM auth.users AS auth_user
+LEFT JOIN public.profiles AS profile ON profile.id = auth_user.id
+CROSS JOIN LATERAL (
+  SELECT
+    COALESCE(
+      NULLIF(regexp_replace(btrim(profile.full_name), '\s+', ' ', 'g'), ''),
+      split_part(auth_user.email, '@', 1),
+      'Resident'
+    ) AS full_name,
+    COALESCE(profile.phone, auth_user.raw_user_meta_data->>'phone', '') AS phone,
+    profile.role AS profile_role,
+    lower(COALESCE(
+      NULLIF(profile.username, ''),
+      split_part(auth_user.email, '@', 1) || '.' ||
+        replace(auth_user.id::TEXT, '-', ''),
+      'resident'
+    )) AS username
+) AS user_data
+WHERE auth_user.email IS NOT NULL
+  AND NOT EXISTS (
+    SELECT 1
+    FROM public.system_users AS existing_user
+    WHERE existing_user.id = auth_user.id
+  )
+ON CONFLICT DO NOTHING;
+
+UPDATE public.system_users AS su
+SET email_verified_at = auth_user.email_confirmed_at
+FROM auth.users AS auth_user
+WHERE su.id = auth_user.id
+  AND su.email_verified_at IS DISTINCT FROM auth_user.email_confirmed_at;
+
+CREATE OR REPLACE FUNCTION public.sync_system_user_email_verification()
+RETURNS TRIGGER AS $$
+BEGIN
+  UPDATE public.system_users
+  SET email_verified_at = NEW.email_confirmed_at,
+      updated_at = NOW()
+  WHERE id = NEW.id
+    AND email_verified_at IS DISTINCT FROM NEW.email_confirmed_at;
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+DROP TRIGGER IF EXISTS on_auth_user_email_verified ON auth.users;
+CREATE TRIGGER on_auth_user_email_verified
+  AFTER UPDATE OF email_confirmed_at ON auth.users
+  FOR EACH ROW
+  WHEN (OLD.email_confirmed_at IS DISTINCT FROM NEW.email_confirmed_at)
+  EXECUTE FUNCTION public.sync_system_user_email_verification();

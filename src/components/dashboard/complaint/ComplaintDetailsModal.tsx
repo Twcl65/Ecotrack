@@ -3,6 +3,7 @@
 import { ChevronDown, User, X } from "lucide-react";
 import { useState } from "react";
 import { updateComplaintStatus } from "@/app/dashboard/complaint/actions";
+import ArchivedBadge from "../ArchivedBadge";
 import ComplaintAttachmentImage from "./ComplaintAttachmentImage";
 import ComplaintStatusBadge from "./ComplaintStatusBadge";
 import type { Complaint, ComplaintStatus } from "@/types/complaint";
@@ -61,7 +62,11 @@ export default function ComplaintDetailsModal({
               <span className="text-sm font-semibold text-gray-800">
                 {complaint.complaintCode}
               </span>
-              <ComplaintStatusBadge status={complaint.status} />
+              {complaint.archivedAt ? (
+                <ArchivedBadge />
+              ) : (
+                <ComplaintStatusBadge status={complaint.status} />
+              )}
             </div>
           </div>
           <button
@@ -110,7 +115,7 @@ export default function ComplaintDetailsModal({
             />
           </DetailBlock>
 
-          {showStatusUpdate && (
+          {showStatusUpdate && !complaint.archivedAt && (
             <div className="rounded-lg border border-gray-200 bg-gray-50 p-3">
               <label className="mb-1.5 block text-sm font-medium text-gray-700">
                 New Status
@@ -149,6 +154,7 @@ export default function ComplaintDetailsModal({
           )}
         </div>
 
+        {!complaint.archivedAt ? (
         <div className="flex justify-end gap-2 border-t border-gray-100 px-5 py-4">
           <button
             type="button"
@@ -173,6 +179,7 @@ export default function ComplaintDetailsModal({
             Mark as Resolved
           </button>
         </div>
+        ) : null}
       </div>
     </div>
   );

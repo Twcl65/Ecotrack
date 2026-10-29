@@ -8,28 +8,32 @@ import {
 import type { Route } from "@/types/routes";
 
 const ROUTE_SELECT =
-  "id, name, distance_km, status, created_at, route_code, barangay, area, driver_name, estimated_minutes";
+  "id, name, distance_km, status, created_at, route_code, barangay, area, driver_name, estimated_minutes, archived_at";
 
-const ROUTE_SELECT_BASIC = "id, name, distance_km, status, created_at";
+const ROUTE_SELECT_BASIC = "id, name, distance_km, status, created_at, archived_at";
 
-export async function getRoutes(): Promise<Route[]> {
+export async function getRoutes(includeArchived = false): Promise<Route[]> {
   try {
     const supabase = await createClient();
 
     let routeRows: Record<string, unknown>[] | null = null;
 
-    const extended = await supabase
+    let extendedQuery = supabase
       .from("routes")
       .select(ROUTE_SELECT)
       .order("created_at", { ascending: false });
+    if (!includeArchived) extendedQuery = extendedQuery.is("archived_at", null);
+    const extended = await extendedQuery;
 
     if (!extended.error && extended.data?.length) {
       routeRows = extended.data;
     } else {
-      const basic = await supabase
+      let basicQuery = supabase
         .from("routes")
         .select(ROUTE_SELECT_BASIC)
         .order("created_at", { ascending: false });
+      if (!includeArchived) basicQuery = basicQuery.is("archived_at", null);
+      const basic = await basicQuery;
       if (basic.error || !basic.data?.length) return [];
       routeRows = basic.data;
     }
@@ -47,7 +51,8 @@ export async function getRoutes(): Promise<Route[]> {
       stopsByRoute.set(stop.routeId, list);
     }
 
-    return routeRows.map((row, index) => {
+    return routeRows
+      .map((row, index) => {
       const id = row.id as string;
       const dbStops = stopsByRoute.get(id) ?? [];
       const mapped = mapRouteRow(
@@ -59,7 +64,8 @@ export async function getRoutes(): Promise<Route[]> {
         mapped.stops = buildFallbackStops(id, row.name as string, mapped.area);
       }
       return mapped;
-    });
+      })
+      .sort((a, b) => Number(Boolean(a.archivedAt)) - Number(Boolean(b.archivedAt)));
   } catch {
     return [];
   }
@@ -72,6 +78,7 @@ export async function getDriverOptions(): Promise<string[]> {
     .select("first_name, middle_name, last_name")
     .eq("role", "driver")
     .eq("status", "active")
+    .is("archived_at", null)
     .order("last_name");
 
   if (error) {
@@ -101,7 +108,10 @@ export async function getBarangayOptions(): Promise<string[]> {
       if (row.name) names.add(String(row.name));
     }
 
-    const { data: routes } = await supabase.from("routes").select("barangay, area");
+    const { data: routes } = await supabase
+      .from("routes")
+      .select("barangay, area")
+      .is("archived_at", null);
     for (const row of routes ?? []) {
       if (row.barangay) {
         String(row.barangay)

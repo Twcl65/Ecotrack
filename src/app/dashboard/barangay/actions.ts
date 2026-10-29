@@ -13,6 +13,7 @@ function mapRow(row: {
   name: string;
   population: number;
   status: string;
+  archived_at?: string | null;
   created_at: string;
   updated_at: string;
 }): Barangay {
@@ -21,6 +22,7 @@ function mapRow(row: {
     name: row.name,
     population: row.population,
     status: row.status as BarangayStatus,
+    archivedAt: row.archived_at ?? null,
     created_at: row.created_at,
     updated_at: row.updated_at,
   };
@@ -84,9 +86,16 @@ export async function updateBarangay(
   return { success: true, barangay: mapRow(data) };
 }
 
-export async function deleteBarangay(id: string): Promise<ActionResult> {
+export async function archiveBarangay(id: string): Promise<ActionResult> {
   const supabase = await createClient();
-  const { error } = await supabase.from("barangays").delete().eq("id", id);
+  const { error } = await supabase
+    .from("barangays")
+    .update({
+      archived_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+    })
+    .eq("id", id)
+    .is("archived_at", null);
 
   if (error) return { success: false, error: error.message };
 

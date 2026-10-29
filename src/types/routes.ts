@@ -23,6 +23,7 @@ export type Route = {
   estimatedMinutes: number;
   driverName: string;
   status: RouteStatus;
+  archivedAt: string | null;
   createdAt: string;
   stops: RouteStop[];
 };

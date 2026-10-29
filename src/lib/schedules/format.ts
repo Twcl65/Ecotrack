@@ -59,6 +59,7 @@ export function mapScheduleRow(
     time_end: string | null;
     driver: string | null;
     status: string;
+    archived_at?: string | null;
   },
   route?: Route
 ): Schedule {
@@ -73,6 +74,7 @@ export function mapScheduleRow(
     timeEnd: formatTimeDisplay(row.time_end),
     driver: row.driver,
     status: row.status as ScheduleStatus,
+    archivedAt: row.archived_at ?? null,
   };
 }
 

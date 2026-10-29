@@ -92,6 +92,9 @@ export default function LoginScreen() {
               value={password}
               onChangeText={setPassword}
               rightIcon={showPassword ? "eye-off-outline" : "eye-outline"}
+              rightIconAccessibilityLabel={
+                showPassword ? "Hide password" : "Show password"
+              }
               onRightIconPress={() => setShowPassword((v) => !v)}
             />
             <Pressable style={styles.forgotWrap}>

@@ -2,16 +2,17 @@
 
 import {
   ChevronDown,
+  Archive,
   ChevronLeft,
   ChevronRight,
   Eye,
   MessageCircle,
   Pencil,
   Search,
-  Trash2,
   User,
 } from "lucide-react";
 import { useMemo, useState } from "react";
+import ArchivedBadge from "../ArchivedBadge";
 import ComplaintStatusBadge from "./ComplaintStatusBadge";
 import type { Complaint, ComplaintStatus } from "@/types/complaint";
 import { COMPLAINT_STATUS_OPTIONS } from "@/types/complaint";
@@ -39,9 +40,9 @@ export default function ComplaintTable({
   onDelete,
 }: Props) {
   const [search, setSearch] = useState("");
-  const [statusFilter, setStatusFilter] = useState<ComplaintStatus | "all">(
-    "all"
-  );
+  const [statusFilter, setStatusFilter] = useState<
+    ComplaintStatus | "archived" | "all"
+  >("all");
   const [barangayFilter, setBarangayFilter] = useState("all");
   const [fromDate, setFromDate] = useState("");
   const [toDate, setToDate] = useState("");
@@ -52,10 +53,16 @@ export default function ComplaintTable({
     return [...complaints]
       .sort(
         (a, b) =>
+          Number(Boolean(a.archivedAt)) - Number(Boolean(b.archivedAt)) ||
           new Date(b.filedAt).getTime() - new Date(a.filedAt).getTime()
       )
       .filter((c) => {
-      if (statusFilter !== "all" && c.status !== statusFilter) return false;
+      if (statusFilter === "archived" && !c.archivedAt) return false;
+      if (
+        statusFilter !== "all" &&
+        statusFilter !== "archived" &&
+        (c.archivedAt || c.status !== statusFilter)
+      ) return false;
       if (barangayFilter !== "all" && c.barangay !== barangayFilter)
         return false;
 
@@ -110,11 +117,12 @@ export default function ComplaintTable({
           className="w-full sm:w-[140px]"
           value={statusFilter}
           onChange={(v) => {
-            setStatusFilter(v as ComplaintStatus | "all");
+            setStatusFilter(v as ComplaintStatus | "archived" | "all");
             setPage(1);
           }}
           options={[
             { value: "all", label: "All Status" },
+            { value: "archived", label: "Archived" },
             ...COMPLAINT_STATUS_OPTIONS.map((o) => ({
               value: o.value,
               label: o.label,
@@ -220,7 +228,11 @@ export default function ComplaintTable({
                       {row.issue}
                     </td>
                     <td className="px-4 py-3">
-                      <ComplaintStatusBadge status={row.status} />
+                      {row.archivedAt ? (
+                        <ArchivedBadge />
+                      ) : (
+                        <ComplaintStatusBadge status={row.status} />
+                      )}
                     </td>
                     <td className="px-4 py-3 text-gray-800">{row.dateLabel}</td>
                     <td className="px-4 py-3">
@@ -245,6 +257,7 @@ export default function ComplaintTable({
                         <button
                           type="button"
                           onClick={() => onEdit(row)}
+                          disabled={Boolean(row.archivedAt)}
                           className="rounded-md p-1.5 text-eco-primary hover:bg-eco-light"
                           aria-label="Edit complaint"
                         >
@@ -253,10 +266,11 @@ export default function ComplaintTable({
                         <button
                           type="button"
                           onClick={() => onDelete(row)}
-                          className="rounded-md p-1.5 text-red-500 hover:bg-red-50"
-                          aria-label="Delete complaint"
+                          disabled={Boolean(row.archivedAt)}
+                          className="rounded-md p-1.5 text-gray-500 hover:bg-gray-100 disabled:cursor-not-allowed disabled:opacity-40"
+                          aria-label="Archive complaint"
                         >
-                          <Trash2 className="h-4 w-4" />
+                          <Archive className="h-4 w-4" />
                         </button>
                       </div>
                     </td>

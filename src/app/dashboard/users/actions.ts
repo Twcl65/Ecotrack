@@ -199,16 +199,21 @@ export async function createSystemUser(
   for (let attempt = 0; attempt < 3; attempt += 1) {
     const { data, error } = await supabase
       .from("system_users")
-      .insert({
+      .upsert({
         id: authUserId,
         ...formToRow(values),
         user_code: userCode,
         avatar_url: avatarUrlForUser(fullName, values.email),
-      })
+      }, { onConflict: "id" })
       .select()
       .single();
 
     if (!error) {
+      const profileError = await syncAuthUser(authUserId, values, fullName);
+      if (profileError) {
+        await admin.auth.admin.deleteUser(authUserId);
+        return { success: false, error: profileError };
+      }
       revalidatePath("/dashboard/users");
       return { success: true, user: mapSystemUserRow(data) };
     }
@@ -358,17 +363,21 @@ export async function deactivateSystemUser(id: string): Promise<ActionResult> {
   return updateSystemUserStatus(id, "inactive");
 }
 
-export async function deleteSystemUser(id: string): Promise<ActionResult> {
+export async function archiveSystemUser(id: string): Promise<ActionResult> {
   const supabase = await createClient();
-
-  if (hasAdminClient()) {
-    const admin = createAdminClient();
-    const { error: authError } = await admin.auth.admin.deleteUser(id);
-    if (authError) return { success: false, error: authError.message };
-  }
-
-  const { error } = await supabase.from("system_users").delete().eq("id", id);
+  const { error } = await supabase
+    .from("system_users")
+    .update({
+      archived_at: new Date().toISOString(),
+      status: "inactive",
+      updated_at: new Date().toISOString(),
+    })
+    .eq("id", id)
+    .is("archived_at", null);
   if (error) return { success: false, error: error.message };
+
+  const banError = await setAuthBan(id, true);
+  if (banError) return { success: false, error: banError };
 
   revalidatePath("/dashboard/users");
   return { success: true };

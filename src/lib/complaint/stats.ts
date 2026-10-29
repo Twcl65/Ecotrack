@@ -6,6 +6,8 @@ export function computeComplaintStats(complaints: Complaint[]): ComplaintStats {
 
   return complaints.reduce<ComplaintStats>(
     (acc, c) => {
+      if (c.archivedAt) return acc;
+
       const filed = new Date(c.filedAt);
       if (filed >= monthStart) acc.totalThisMonth += 1;
 

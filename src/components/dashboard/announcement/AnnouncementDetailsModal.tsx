@@ -1,8 +1,9 @@
 "use client";
 
-import { Calendar, Eye, Megaphone, Pencil, Trash2, Users, X } from "lucide-react";
+import { Archive, Calendar, Eye, Megaphone, Pencil, Users, X } from "lucide-react";
 import { useEffect } from "react";
 import { incrementAnnouncementViews } from "@/app/dashboard/announcement/actions";
+import ArchivedBadge from "../ArchivedBadge";
 import { AnnouncementStatusBadge } from "./AnnouncementBadges";
 import type { Announcement } from "@/types/announcement";
 import { ANNOUNCEMENT_AUDIENCE_OPTIONS, ANNOUNCEMENT_TYPE_CONFIG } from "@/types/announcement";
@@ -25,7 +26,7 @@ export default function AnnouncementDetailsModal({
   onViewsUpdated,
 }: Props) {
   useEffect(() => {
-    if (!open || !announcement) return;
+    if (!open || !announcement || announcement.archivedAt) return;
     incrementAnnouncementViews(announcement.id).then((result) => {
       if (result.success && result.announcement) {
         onViewsUpdated(result.announcement);
@@ -61,7 +62,11 @@ export default function AnnouncementDetailsModal({
           </div>
 
           <div className="mb-3">
-            <AnnouncementStatusBadge status={announcement.status} />
+            {announcement.archivedAt ? (
+              <ArchivedBadge />
+            ) : (
+              <AnnouncementStatusBadge status={announcement.status} />
+            )}
           </div>
 
           <h3 className="text-lg font-bold text-gray-900">{announcement.title}</h3>
@@ -99,6 +104,7 @@ export default function AnnouncementDetailsModal({
           </ul>
         </div>
 
+        {!announcement.archivedAt ? (
         <div className="flex gap-2 border-t border-gray-100 px-5 py-4">
           <button
             type="button"
@@ -117,12 +123,13 @@ export default function AnnouncementDetailsModal({
               onClose();
               onDelete(announcement);
             }}
-            className="inline-flex flex-1 items-center justify-center gap-2 rounded-lg border border-red-500 px-4 py-2 text-sm font-semibold text-red-500 hover:bg-red-50"
+            className="inline-flex flex-1 items-center justify-center gap-2 rounded-lg border border-gray-400 px-4 py-2 text-sm font-semibold text-gray-600 hover:bg-gray-50"
           >
-            <Trash2 className="h-4 w-4" />
-            Delete Announcement
+            <Archive className="h-4 w-4" />
+            Archive Announcement
           </button>
         </div>
+        ) : null}
       </div>
     </div>
   );

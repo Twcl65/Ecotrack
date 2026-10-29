@@ -14,7 +14,7 @@ export async function getScheduleBarangayOptions(): Promise<string[]> {
 export async function getScheduleRouteOptions(): Promise<ScheduleRouteOption[]> {
   const routes = await getRoutes();
   return routes
-    .filter((r) => r.status === "active")
+    .filter((r) => r.status === "active" && !r.archivedAt)
     .map((r) => ({
       id: r.id,
       label: `${r.routeCode} — ${r.name}`,
@@ -24,23 +24,29 @@ export async function getScheduleRouteOptions(): Promise<ScheduleRouteOption[]> 
     .sort((a, b) => a.label.localeCompare(b.label));
 }
 
-export async function getSchedules(): Promise<Schedule[]> {
+export async function getSchedules(includeArchived = false): Promise<Schedule[]> {
   try {
     const supabase = await createClient();
     const [{ data, error }, routes] = await Promise.all([
-      supabase
-        .from("collection_schedules")
-        .select("*")
-        .order("collection_date", { ascending: false }),
+      (() => {
+        let query = supabase
+          .from("collection_schedules")
+          .select("*")
+          .order("collection_date", { ascending: false });
+        if (!includeArchived) query = query.is("archived_at", null);
+        return query;
+      })(),
       getRoutes(),
     ]);
 
     if (error || !data?.length) return [];
 
     const routeById = new Map<string, Route>(routes.map((r) => [r.id, r]));
-    return data.map((row) =>
-      mapScheduleRow(row, row.route_id ? routeById.get(row.route_id) : undefined)
-    );
+    return data
+      .map((row) =>
+        mapScheduleRow(row, row.route_id ? routeById.get(row.route_id) : undefined)
+      )
+      .sort((a, b) => Number(Boolean(a.archivedAt)) - Number(Boolean(b.archivedAt)));
   } catch {
     return [];
   }

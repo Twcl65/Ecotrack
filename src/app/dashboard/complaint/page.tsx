@@ -4,7 +4,7 @@ import { getComplaints } from "@/lib/complaint/data";
 
 export default async function ComplaintPage() {
   const [complaints, barangays] = await Promise.all([
-    getComplaints(),
+    getComplaints(true),
     getBarangays(),
   ]);
 

@@ -85,6 +85,7 @@ export function mapAnnouncementRow(row: {
   publish_status?: string | null;
   published_at?: string | null;
   expires_at?: string | null;
+  archived_at?: string | null;
   views?: number | null;
   created_at: string;
   updated_at?: string | null;
@@ -106,6 +107,7 @@ export function mapAnnouncementRow(row: {
     audience: (row.audience ?? "all_residents") as Announcement["audience"],
     publishStatus,
     status,
+    archivedAt: row.archived_at ?? null,
     publishedAt,
     expiresAt,
     views: row.views ?? 0,

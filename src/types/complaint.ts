@@ -12,6 +12,7 @@ export type Complaint = {
   barangay: string;
   issue: string;
   status: ComplaintStatus;
+  archivedAt: string | null;
   filedAt: string;
   dateLabel: string;
   timeLabel: string;

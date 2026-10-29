@@ -108,12 +108,16 @@ export async function updateSchedule(
   return { success: true, schedule: await mapSavedSchedule(data) };
 }
 
-export async function deleteSchedule(id: string): Promise<ActionResult> {
+export async function archiveSchedule(id: string): Promise<ActionResult> {
   const supabase = await createClient();
   const { error } = await supabase
     .from("collection_schedules")
-    .delete()
-    .eq("id", id);
+    .update({
+      archived_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+    })
+    .eq("id", id)
+    .is("archived_at", null);
 
   if (error) return { success: false, error: error.message };
 

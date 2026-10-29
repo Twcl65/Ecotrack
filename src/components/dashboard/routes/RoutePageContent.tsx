@@ -54,8 +54,22 @@ export default function RoutePageContent({
     setViewing((v) => (v?.id === route.id ? route : v));
   }, []);
 
-  const handleDelete = useCallback((id: string) => {
-    setRoutes((prev) => prev.filter((r) => r.id !== id));
+  const handleArchive = useCallback((id: string) => {
+    const archivedAt = new Date().toISOString();
+    setRoutes((prev) =>
+      prev
+        .map((route) =>
+          route.id === id ? { ...route, archivedAt } : route
+        )
+        .sort(
+          (a, b) =>
+            Number(Boolean(a.archivedAt)) - Number(Boolean(b.archivedAt)) ||
+            a.routeCode.localeCompare(b.routeCode)
+        )
+    );
+    setViewing((current) =>
+      current?.id === id ? { ...current, archivedAt } : current
+    );
   }, []);
 
   return (
@@ -96,7 +110,7 @@ export default function RoutePageContent({
         route={deleting}
         open={!!deleting}
         onClose={() => setDeleting(null)}
-        onSuccess={handleDelete}
+        onSuccess={handleArchive}
       />
     </>
   );

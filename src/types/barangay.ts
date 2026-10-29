@@ -5,6 +5,7 @@ export type Barangay = {
   name: string;
   population: number;
   status: BarangayStatus;
+  archivedAt: string | null;
   created_at?: string;
   updated_at?: string;
 };
@@ -30,11 +31,11 @@ export const BARANGAY_STATUS_CONFIG: Record<
 };
 
 export const DEFAULT_BARANGAYS: Barangay[] = [
-  { id: "1", name: "Upper Jasaan", population: 2670, status: "active" },
-  { id: "2", name: "Nahalinan", population: 1845, status: "active" },
-  { id: "3", name: "Lower Jasaan", population: 2230, status: "active" },
-  { id: "4", name: "Solana", population: 1980, status: "active" },
-  { id: "5", name: "Aplaya", population: 2150, status: "active" },
-  { id: "6", name: "Bubontogan", population: 1720, status: "active" },
-  { id: "7", name: "San Antonio", population: 2410, status: "active" },
+  { id: "1", name: "Upper Jasaan", population: 2670, status: "active", archivedAt: null },
+  { id: "2", name: "Nahalinan", population: 1845, status: "active", archivedAt: null },
+  { id: "3", name: "Lower Jasaan", population: 2230, status: "active", archivedAt: null },
+  { id: "4", name: "Solana", population: 1980, status: "active", archivedAt: null },
+  { id: "5", name: "Aplaya", population: 2150, status: "active", archivedAt: null },
+  { id: "6", name: "Bubontogan", population: 1720, status: "active", archivedAt: null },
+  { id: "7", name: "San Antonio", population: 2410, status: "active", archivedAt: null },
 ];

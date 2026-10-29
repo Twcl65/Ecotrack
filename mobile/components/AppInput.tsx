@@ -13,6 +13,7 @@ type Props = TextInputProps & {
   label?: string;
   icon?: keyof typeof Ionicons.glyphMap;
   rightIcon?: keyof typeof Ionicons.glyphMap;
+  rightIconAccessibilityLabel?: string;
   onRightIconPress?: () => void;
 };
 
@@ -20,6 +21,7 @@ export default function AppInput({
   label,
   icon,
   rightIcon,
+  rightIconAccessibilityLabel,
   onRightIconPress,
   style,
   ...props
@@ -38,11 +40,21 @@ export default function AppInput({
         ) : null}
         <TextInput
           placeholderTextColor={colors.textMuted}
-          style={[styles.input, icon && styles.inputWithIcon, style]}
+          style={[
+            styles.input,
+            icon && styles.inputWithIcon,
+            rightIcon && styles.inputWithRightIcon,
+            style,
+          ]}
           {...props}
         />
         {rightIcon ? (
-          <Pressable onPress={onRightIconPress} style={styles.rightIcon}>
+          <Pressable
+            onPress={onRightIconPress}
+            style={styles.rightIcon}
+            accessibilityRole="button"
+            accessibilityLabel={rightIconAccessibilityLabel}
+          >
             <Ionicons name={rightIcon} size={18} color={colors.textMuted} />
           </Pressable>
         ) : null}
@@ -76,6 +88,9 @@ const styles = StyleSheet.create({
   },
   inputWithIcon: {
     paddingLeft: 42,
+  },
+  inputWithRightIcon: {
+    paddingRight: 42,
   },
   leftIcon: {
     position: "absolute",

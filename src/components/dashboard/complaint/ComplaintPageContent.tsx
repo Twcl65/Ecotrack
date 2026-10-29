@@ -45,8 +45,22 @@ export default function ComplaintPageContent({
     setEditing((e) => (e?.id === complaint.id ? complaint : e));
   }, []);
 
-  const handleDelete = useCallback((id: string) => {
-    setComplaints((prev) => prev.filter((c) => c.id !== id));
+  const handleArchive = useCallback((id: string) => {
+    const archivedAt = new Date().toISOString();
+    setComplaints((prev) =>
+      prev
+        .map((complaint) =>
+          complaint.id === id ? { ...complaint, archivedAt } : complaint
+        )
+        .sort(
+          (a, b) =>
+            Number(Boolean(a.archivedAt)) - Number(Boolean(b.archivedAt)) ||
+            new Date(b.filedAt).getTime() - new Date(a.filedAt).getTime()
+        )
+    );
+    setViewing((current) =>
+      current?.id === id ? { ...current, archivedAt } : current
+    );
   }, []);
 
   return (
@@ -88,7 +102,7 @@ export default function ComplaintPageContent({
         complaint={deleting}
         open={!!deleting}
         onClose={() => setDeleting(null)}
-        onSuccess={handleDelete}
+        onSuccess={handleArchive}
       />
     </>
   );

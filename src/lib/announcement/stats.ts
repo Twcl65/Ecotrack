@@ -8,6 +8,8 @@ export function computeAnnouncementStats(
 
   return announcements.reduce<AnnouncementStats>(
     (acc, item) => {
+      if (item.archivedAt) return acc;
+
       const posted = new Date(item.publishedAt ?? item.created_at);
       if (posted >= monthStart) {
         acc.totalThisMonth += 1;

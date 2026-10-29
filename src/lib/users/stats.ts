@@ -3,6 +3,8 @@ import type { SystemUser, UserStats } from "@/types/user";
 export function computeUserStats(users: SystemUser[]): UserStats {
   return users.reduce<UserStats>(
     (acc, user) => {
+      if (user.archivedAt) return acc;
+
       acc.total += 1;
       if (user.status === "inactive") acc.inactive += 1;
       switch (user.role) {

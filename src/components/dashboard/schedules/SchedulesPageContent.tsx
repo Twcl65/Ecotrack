@@ -58,8 +58,20 @@ export default function SchedulesPageContent({
     });
   }, []);
 
-  const handleDelete = useCallback((id: string) => {
-    setSchedules((prev) => prev.filter((s) => s.id !== id));
+  const handleArchive = useCallback((id: string) => {
+    setSchedules((prev) =>
+      prev
+        .map((schedule) =>
+          schedule.id === id
+            ? { ...schedule, archivedAt: new Date().toISOString() }
+            : schedule
+        )
+        .sort(
+          (a, b) =>
+            Number(Boolean(a.archivedAt)) - Number(Boolean(b.archivedAt)) ||
+            b.date.localeCompare(a.date)
+        )
+    );
   }, []);
 
   return (
@@ -109,7 +121,10 @@ export default function SchedulesPageContent({
               onDelete={openDelete}
             />
           ) : (
-            <SchedulesCalendarView schedules={schedules} holidayDates={holidayDates} />
+            <SchedulesCalendarView
+              schedules={schedules.filter((schedule) => !schedule.archivedAt)}
+              holidayDates={holidayDates}
+            />
           )}
         </div>
       </div>
@@ -130,7 +145,7 @@ export default function SchedulesPageContent({
         schedule={deletingSchedule}
         open={!!deletingSchedule}
         onClose={() => setDeletingSchedule(null)}
-        onSuccess={handleDelete}
+        onSuccess={handleArchive}
       />
     </>
   );

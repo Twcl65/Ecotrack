@@ -27,6 +27,24 @@ export function UserStatusBadge({ status }: { status: UserStatus }) {
   );
 }
 
+export function UserVerificationBadge({
+  verified,
+}: {
+  verified: boolean;
+}) {
+  return (
+    <span
+      className={`inline-flex rounded-full px-2.5 py-0.5 text-xs font-semibold ${
+        verified
+          ? "bg-emerald-100 text-emerald-800"
+          : "bg-amber-100 text-amber-800"
+      }`}
+    >
+      {verified ? "Verified" : "Waiting for verification"}
+    </span>
+  );
+}
+
 export function UserRolePill({ role }: { role: UserRole }) {
   const cfg = USER_ROLE_CONFIG[role];
   return (

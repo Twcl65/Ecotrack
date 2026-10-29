@@ -25,6 +25,8 @@ export default function RegisterScreen() {
   const [phone, setPhone] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -105,17 +107,33 @@ export default function RegisterScreen() {
               label="Password"
               icon="lock-closed-outline"
               placeholder="At least 6 characters"
-              secureTextEntry
+              secureTextEntry={!showPassword}
               value={password}
               onChangeText={setPassword}
+              rightIcon={showPassword ? "eye-off-outline" : "eye-outline"}
+              rightIconAccessibilityLabel={
+                showPassword ? "Hide password" : "Show password"
+              }
+              onRightIconPress={() => setShowPassword((show) => !show)}
             />
             <AppInput
               label="Confirm Password"
               icon="lock-closed-outline"
               placeholder="Confirm password"
-              secureTextEntry
+              secureTextEntry={!showConfirmPassword}
               value={confirmPassword}
               onChangeText={setConfirmPassword}
+              rightIcon={
+                showConfirmPassword ? "eye-off-outline" : "eye-outline"
+              }
+              rightIconAccessibilityLabel={
+                showConfirmPassword
+                  ? "Hide confirm password"
+                  : "Show confirm password"
+              }
+              onRightIconPress={() =>
+                setShowConfirmPassword((show) => !show)
+              }
             />
             {error ? <Text style={styles.error}>{error}</Text> : null}
             <AppButton label="Register" onPress={handleRegister} loading={loading} />

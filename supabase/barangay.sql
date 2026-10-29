@@ -5,10 +5,12 @@ CREATE TABLE IF NOT EXISTS barangays (
   name TEXT NOT NULL UNIQUE,
   population INT NOT NULL DEFAULT 0 CHECK (population >= 0),
   status TEXT NOT NULL DEFAULT 'active' CHECK (status IN ('active', 'inactive')),
+  archived_at TIMESTAMPTZ,
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
+ALTER TABLE barangays ADD COLUMN IF NOT EXISTS archived_at TIMESTAMPTZ;
 ALTER TABLE barangays ENABLE ROW LEVEL SECURITY;
 
 DROP POLICY IF EXISTS "Auth read barangays" ON barangays;

@@ -17,6 +17,7 @@ export type Schedule = {
   timeEnd: string | null;
   driver: string | null;
   status: ScheduleStatus;
+  archivedAt: string | null;
 };
 
 export type ScheduleFormValues = {

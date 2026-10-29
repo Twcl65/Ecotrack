@@ -1,5 +1,5 @@
 import type { LucideIcon } from "lucide-react";
-import { Shield, Truck, UserRound, UserRoundX, Users } from "lucide-react";
+import { Truck, UserRound, UserRoundX, Users } from "lucide-react";
 import type { UserStats } from "@/types/user";
 
 type Props = { stats: UserStats };
@@ -15,12 +15,6 @@ const CARDS: {
     label: "Total Users",
     icon: Users,
     iconClass: "text-emerald-600 bg-emerald-100",
-  },
-  {
-    key: "administrators",
-    label: "Administrators",
-    icon: Shield,
-    iconClass: "text-blue-600 bg-blue-100",
   },
   {
     key: "drivers",

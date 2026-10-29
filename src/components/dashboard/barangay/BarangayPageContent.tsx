@@ -39,8 +39,20 @@ export default function BarangayPageContent({ initialBarangays }: Props) {
     });
   }, []);
 
-  const handleDelete = useCallback((id: string) => {
-    setBarangays((prev) => prev.filter((b) => b.id !== id));
+  const handleArchive = useCallback((id: string) => {
+    setBarangays((prev) =>
+      prev
+        .map((barangay) =>
+          barangay.id === id
+            ? { ...barangay, archivedAt: new Date().toISOString() }
+            : barangay
+        )
+        .sort(
+          (a, b) =>
+            Number(Boolean(a.archivedAt)) - Number(Boolean(b.archivedAt)) ||
+            a.name.localeCompare(b.name)
+        )
+    );
   }, []);
 
   return (
@@ -68,7 +80,7 @@ export default function BarangayPageContent({ initialBarangays }: Props) {
         barangay={deleting}
         open={!!deleting}
         onClose={() => setDeleting(null)}
-        onSuccess={handleDelete}
+        onSuccess={handleArchive}
       />
     </>
   );

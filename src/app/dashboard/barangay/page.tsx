@@ -2,7 +2,7 @@ import BarangayPageContent from "@/components/dashboard/barangay/BarangayPageCon
 import { getBarangays } from "@/lib/barangay/data";
 
 export default async function BarangayPage() {
-  const barangays = await getBarangays();
+  const barangays = await getBarangays(true);
 
   return <BarangayPageContent initialBarangays={barangays} />;
 }

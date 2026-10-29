@@ -60,6 +60,7 @@ export type AnnouncementRow = {
   publish_status: string;
   published_at: string | null;
   expires_at: string | null;
+  archived_at: string | null;
   views: number;
   created_at: string;
   updated_at: string;
@@ -74,6 +75,7 @@ export type CollectionScheduleRow = {
   time_end: string | null;
   driver: string | null;
   status: string;
+  archived_at: string | null;
   created_at: string;
   updated_at: string;
 };
@@ -94,6 +96,7 @@ export type BarangayRow = {
   name: string;
   population: number;
   status: string;
+  archived_at: string | null;
   created_at: string;
   updated_at: string;
 };
@@ -107,6 +110,7 @@ export type ComplaintRow = {
   barangay: string;
   issue: string;
   status: string;
+  archived_at: string | null;
   filed_at: string;
   attachment_url: string | null;
   created_at: string;
@@ -159,6 +163,8 @@ export type SystemUserRow = {
   role: string;
   username: string;
   status: string;
+  email_verified_at: string | null;
+  archived_at: string | null;
   avatar_url: string | null;
   last_login_at: string | null;
   created_at: string;
@@ -177,6 +183,7 @@ export type RouteRow = {
   vehicle_id: string | null;
   estimated_minutes: number | null;
   created_at: string;
+  archived_at: string | null;
 };
 
 export type RouteStopRow = {
@@ -301,7 +308,7 @@ export type Database = {
         Row: AnnouncementRow;
         Insert: Omit<
           AnnouncementRow,
-          "id" | "created_at" | "updated_at" | "views"
+          "id" | "created_at" | "updated_at" | "views" | "archived_at"
         > & {
           id?: string;
           created_at?: string;
@@ -313,16 +320,21 @@ export type Database = {
           publish_status?: string;
           published_at?: string | null;
           expires_at?: string | null;
+          archived_at?: string | null;
         };
         Update: Partial<AnnouncementRow>;
         Relationships: [];
       };
       collection_schedules: {
         Row: CollectionScheduleRow;
-        Insert: Omit<CollectionScheduleRow, "id" | "created_at" | "updated_at"> & {
+        Insert: Omit<
+          CollectionScheduleRow,
+          "id" | "created_at" | "updated_at" | "archived_at"
+        > & {
           id?: string;
           created_at?: string;
           updated_at?: string;
+          archived_at?: string | null;
         };
         Update: Partial<CollectionScheduleRow>;
         Relationships: [];
@@ -335,10 +347,11 @@ export type Database = {
       };
       barangays: {
         Row: BarangayRow;
-        Insert: Omit<BarangayRow, "id" | "created_at" | "updated_at"> & {
+        Insert: Omit<BarangayRow, "id" | "created_at" | "updated_at" | "archived_at"> & {
           id?: string;
           created_at?: string;
           updated_at?: string;
+          archived_at?: string | null;
         };
         Update: Partial<BarangayRow>;
         Relationships: [];
@@ -347,12 +360,13 @@ export type Database = {
         Row: ComplaintRow;
         Insert: Omit<
           ComplaintRow,
-          "id" | "resident_id" | "created_at" | "updated_at"
+          "id" | "resident_id" | "created_at" | "updated_at" | "archived_at"
         > & {
           id?: string;
           resident_id?: string | null;
           created_at?: string;
           updated_at?: string;
+          archived_at?: string | null;
         };
         Update: Partial<ComplaintRow>;
         Relationships: [];
@@ -390,13 +404,20 @@ export type Database = {
         Row: SystemUserRow;
         Insert: Omit<
           SystemUserRow,
-          "id" | "created_at" | "updated_at" | "last_login_at"
+          | "id"
+          | "created_at"
+          | "updated_at"
+          | "last_login_at"
+          | "email_verified_at"
+          | "archived_at"
         > & {
           id?: string;
           created_at?: string;
           updated_at?: string;
           phone?: string;
           status?: string;
+          email_verified_at?: string | null;
+          archived_at?: string | null;
           avatar_url?: string | null;
           last_login_at?: string | null;
         };
@@ -405,9 +426,10 @@ export type Database = {
       };
       routes: {
         Row: RouteRow;
-        Insert: Omit<RouteRow, "id" | "created_at"> & {
+        Insert: Omit<RouteRow, "id" | "created_at" | "archived_at"> & {
           id?: string;
           created_at?: string;
+          archived_at?: string | null;
           route_code?: string | null;
           barangay?: string | null;
           area?: string | null;

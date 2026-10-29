@@ -20,27 +20,66 @@ export default function ScheduleScreen() {
   const [schedules, setSchedules] = useState<ScheduleItem[]>([]);
   const [holidays, setHolidays] = useState<HolidayItem[]>([]);
   const [selectedDate, setSelectedDate] = useState(todayIso());
+  const [visibleMonth, setVisibleMonth] = useState(() => {
+    const [year, month] = todayIso().split("-").map(Number);
+    return { year, month };
+  });
 
-  const load = useCallback(async () => {
-    try {
-      const [scheduleItems, holidayItems] = await Promise.all([
-        fetchSchedules(true),
-        fetchHolidays(),
-      ]);
-      setSchedules(scheduleItems);
-      setHolidays(holidayItems);
-    } catch (error) {
-      Alert.alert(
-        "Could not load schedule calendar",
-        error instanceof Error ? error.message : "Please try again."
-      );
-    }
-  }, []);
+  const dateRange = useMemo(() => {
+    const lastDay = new Date(
+      Date.UTC(visibleMonth.year, visibleMonth.month, 0)
+    ).getUTCDate();
+    const month = String(visibleMonth.month).padStart(2, "0");
+    return {
+      fromDate: `${visibleMonth.year}-${month}-01`,
+      toDate: `${visibleMonth.year}-${month}-${String(lastDay).padStart(2, "0")}`,
+    };
+  }, [visibleMonth]);
 
   useFocusEffect(
     useCallback(() => {
+      let isActive = true;
+
+      const load = async () => {
+        try {
+          const scheduleItems = await fetchSchedules(true, dateRange);
+          if (!isActive) return;
+          setSchedules(scheduleItems);
+        } catch (error) {
+          if (!isActive) return;
+          Alert.alert(
+            "Could not load schedule calendar",
+            error instanceof Error ? error.message : "Please try again."
+          );
+        }
+      };
+
       void load();
-    }, [load])
+      return () => {
+        isActive = false;
+      };
+    }, [dateRange])
+  );
+
+  useFocusEffect(
+    useCallback(() => {
+      let isActive = true;
+      fetchHolidays()
+        .then((holidayItems) => {
+          if (isActive) setHolidays(holidayItems);
+        })
+        .catch((error: unknown) => {
+          if (!isActive) return;
+          Alert.alert(
+            "Could not load schedule calendar",
+            error instanceof Error ? error.message : "Please try again."
+          );
+        });
+
+      return () => {
+        isActive = false;
+      };
+    }, [])
   );
 
   const scheduleDates = useMemo(
@@ -51,10 +90,51 @@ export default function ScheduleScreen() {
     () => new Set(holidays.flatMap((holiday) => holiday.dates)),
     [holidays]
   );
+  const markedDates = useMemo(() => {
+    const marks: Record<
+      string,
+      {
+        selected?: boolean;
+        selectedColor?: string;
+        selectedTextColor?: string;
+        dots?: { key: string; color: string }[];
+      }
+    > = {};
 
-  const filtered = schedules.filter((s) => s.date === selectedDate);
-  const selectedHolidays = holidays.filter((holiday) =>
-    holiday.dates.includes(selectedDate)
+    for (const date of scheduleDates) {
+      marks[date] = {
+        dots: [{ key: "collection", color: colors.primary }],
+      };
+    }
+
+    for (const date of holidayDateSet) {
+      const current = marks[date] ?? {};
+      marks[date] = {
+        ...current,
+        dots: [
+          ...(current.dots ?? []),
+          { key: "holiday", color: "#9333ea" },
+        ],
+      };
+    }
+
+    marks[selectedDate] = {
+      ...marks[selectedDate],
+      selected: true,
+      selectedColor: colors.primary,
+      selectedTextColor: colors.white,
+    };
+    return marks;
+  }, [colors.primary, colors.white, holidayDateSet, scheduleDates, selectedDate]);
+
+  const filtered = useMemo(
+    () => schedules.filter((schedule) => schedule.date === selectedDate),
+    [schedules, selectedDate]
+  );
+  const selectedHolidays = useMemo(
+    () =>
+      holidays.filter((holiday) => holiday.dates.includes(selectedDate)),
+    [holidays, selectedDate]
   );
 
   return (
@@ -63,41 +143,22 @@ export default function ScheduleScreen() {
       <View style={styles.body}>
         <Calendar
           current={selectedDate}
+          hideExtraDays
+          enableSwipeMonths
+          markingType="multi-dot"
+          markedDates={markedDates}
           onDayPress={(day: { dateString: string }) => setSelectedDate(day.dateString)}
-          dayComponent={({ date, state, onPress }) => {
-            if (!date) return null;
-            const isSelected = date.dateString === selectedDate;
-            const isHoliday = holidayDateSet.has(date.dateString);
-            const hasSchedule = scheduleDates.has(date.dateString);
-            return (
-              <Pressable
-                accessibilityRole="button"
-                accessibilityLabel={`${date.day}${isHoliday ? ", holiday" : ""}${hasSchedule ? ", collection scheduled" : ""}`}
-                onPress={() => onPress?.(date)}
-                style={[
-                  styles.calendarDay,
-                  isSelected && styles.calendarDaySelected,
-                ]}
-              >
-                <Text
-                  style={[
-                    styles.calendarDayText,
-                    state === "disabled" && styles.calendarDayDisabled,
-                    hasSchedule && styles.scheduleDateText,
-                    isHoliday && styles.holidayDateText,
-                    isSelected &&
-                      (isHoliday
-                        ? styles.calendarDayHolidaySelected
-                        : styles.calendarDaySelectedText),
-                  ]}
-                >
-                  {date.day}
-                </Text>
-                <View style={styles.indicators}>
-                  {hasSchedule ? <View style={styles.collectionIndicator} /> : null}
-                  {isHoliday ? <View style={styles.holidayIndicator} /> : null}
-                </View>
-              </Pressable>
+          onMonthChange={(date: { year: number; month: number }) => {
+            const maxDay = new Date(
+              Date.UTC(date.year, date.month, 0)
+            ).getUTCDate();
+            const selectedDay = Math.min(
+              Number(selectedDate.slice(-2)),
+              maxDay
+            );
+            setVisibleMonth({ year: date.year, month: date.month });
+            setSelectedDate(
+              `${date.year}-${String(date.month).padStart(2, "0")}-${String(selectedDay).padStart(2, "0")}`
             );
           }}
           theme={{
@@ -119,6 +180,10 @@ export default function ScheduleScreen() {
           data={filtered}
           keyExtractor={(item) => item.id}
           contentContainerStyle={styles.list}
+          initialNumToRender={6}
+          maxToRenderPerBatch={6}
+          windowSize={5}
+          removeClippedSubviews
           ListHeaderComponent={
             <View>
               <Text style={styles.listTitle}>Upcoming Collections</Text>
@@ -178,57 +243,6 @@ function createStyles(colors: ThemeColors) {
       borderBottomWidth: 1,
       borderBottomColor: colors.border,
       backgroundColor: colors.surface,
-    },
-    calendarDay: {
-      width: 40,
-      height: 42,
-      alignItems: "center",
-      justifyContent: "center",
-      borderRadius: 21,
-    },
-    calendarDaySelected: {
-      backgroundColor: colors.primary,
-    },
-    calendarDayHolidaySelected: {
-      backgroundColor: "#f3e8ff",
-    },
-    calendarDayText: {
-      color: colors.text,
-      fontSize: fontSize.sm,
-    },
-    calendarDaySelectedText: {
-      color: colors.white,
-      fontWeight: "700",
-    },
-    scheduleDateText: {
-      color: colors.primary,
-      fontWeight: "800",
-    },
-    calendarDayDisabled: {
-      color: colors.textMuted,
-      opacity: 0.5,
-    },
-    holidayDateText: {
-      color: "#9333ea",
-      fontWeight: "800",
-    },
-    indicators: {
-      position: "absolute",
-      bottom: 3,
-      flexDirection: "row",
-      gap: 3,
-    },
-    collectionIndicator: {
-      width: 4,
-      height: 4,
-      borderRadius: 2,
-      backgroundColor: colors.primary,
-    },
-    holidayIndicator: {
-      width: 4,
-      height: 4,
-      borderRadius: 2,
-      backgroundColor: "#9333ea",
     },
     list: {
       padding: spacing.md,

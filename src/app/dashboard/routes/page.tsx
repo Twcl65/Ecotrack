@@ -7,7 +7,7 @@ import {
 
 export default async function RoutesPage() {
   const [routes, driverOptions, barangayOptions] = await Promise.all([
-    getRoutes(),
+    getRoutes(true),
     getDriverOptions(),
     getBarangayOptions(),
   ]);

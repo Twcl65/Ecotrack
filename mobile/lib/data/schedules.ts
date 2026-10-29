@@ -14,6 +14,11 @@ export type ScheduleItem = {
   status: string;
 };
 
+export type ScheduleDateRange = {
+  fromDate: string;
+  toDate: string;
+};
+
 function formatDateLabel(dateStr: string): string {
   const d = new Date(`${dateStr}T12:00:00`);
   return d.toLocaleDateString("en-US", {
@@ -39,12 +44,24 @@ function formatTime(time: string | null): string | null {
 }
 
 export async function fetchSchedules(
-  throwOnError = false
+  throwOnError = false,
+  dateRange?: ScheduleDateRange
 ): Promise<ScheduleItem[]> {
-  const { data, error } = await supabase
+  let query = supabase
     .from("collection_schedules")
-    .select("*")
+    .select(
+      "id, barangay, collection_date, time_start, time_end, driver, route_id, status"
+    )
+    .is("archived_at", null)
     .order("collection_date", { ascending: true });
+
+  if (dateRange) {
+    query = query
+      .gte("collection_date", dateRange.fromDate)
+      .lte("collection_date", dateRange.toDate);
+  }
+
+  const { data, error } = await query;
 
   if (error) {
     if (throwOnError) {

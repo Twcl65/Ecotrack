@@ -1,7 +1,8 @@
 "use client";
 
-import { ChevronLeft, ChevronRight, Pencil, Plus, Search, Trash2 } from "lucide-react";
+import { Archive, ChevronLeft, ChevronRight, Pencil, Plus, Search } from "lucide-react";
 import { useMemo, useState } from "react";
+import ArchivedBadge from "../ArchivedBadge";
 import BarangayStatusBadge from "./BarangayStatusBadge";
 import type { Barangay } from "@/types/barangay";
 
@@ -26,6 +27,7 @@ export default function BarangayTable({
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
     const newestFirst = [...barangays].sort((a, b) =>
+      Number(Boolean(a.archivedAt)) - Number(Boolean(b.archivedAt)) ||
       (b.created_at ?? "").localeCompare(a.created_at ?? "")
     );
     if (!q) return newestFirst;
@@ -119,13 +121,18 @@ export default function BarangayTable({
                       {row.population.toLocaleString()}
                     </td>
                     <td className="px-4 py-3">
-                      <BarangayStatusBadge status={row.status} />
+                      {row.archivedAt ? (
+                        <ArchivedBadge />
+                      ) : (
+                        <BarangayStatusBadge status={row.status} />
+                      )}
                     </td>
                     <td className="px-4 py-3">
                       <div className="flex items-center gap-2">
                         <button
                           type="button"
                           onClick={() => onEdit(row)}
+                          disabled={Boolean(row.archivedAt)}
                           className="rounded-md p-1.5 text-eco-primary hover:bg-eco-light"
                           aria-label="Edit barangay"
                         >
@@ -134,10 +141,11 @@ export default function BarangayTable({
                         <button
                           type="button"
                           onClick={() => onDelete(row)}
-                          className="rounded-md p-1.5 text-red-500 hover:bg-red-50"
-                          aria-label="Delete barangay"
+                          disabled={Boolean(row.archivedAt)}
+                          className="rounded-md p-1.5 text-gray-500 hover:bg-gray-100 disabled:cursor-not-allowed disabled:opacity-40"
+                          aria-label="Archive barangay"
                         >
-                          <Trash2 className="h-4 w-4" />
+                          <Archive className="h-4 w-4" />
                         </button>
                       </div>
                     </td>

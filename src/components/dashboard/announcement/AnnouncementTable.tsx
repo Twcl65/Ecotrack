@@ -2,6 +2,7 @@
 
 import {
   AlertTriangle,
+  Archive,
   BookOpen,
   Calendar,
   ChevronDown,
@@ -12,10 +13,11 @@ import {
   Gift,
   Megaphone,
   Pencil,
+  BellRing,
   Search,
-  Trash2,
 } from "lucide-react";
 import { useMemo, useState } from "react";
+import ArchivedBadge from "../ArchivedBadge";
 import {
   AnnouncementStatusBadge,
   AnnouncementTypeBadge,
@@ -48,6 +50,7 @@ const TYPE_ICONS = {
   general: FileText,
   guidelines: BookOpen,
   holiday: Gift,
+  reminder: BellRing,
 };
 
 export default function AnnouncementTable({
@@ -58,7 +61,7 @@ export default function AnnouncementTable({
 }: Props) {
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<
-    AnnouncementDisplayStatus | "all"
+    AnnouncementDisplayStatus | "archived" | "all"
   >("all");
   const [typeFilter, setTypeFilter] = useState<AnnouncementType | "all">("all");
   const [fromDate, setFromDate] = useState("");
@@ -70,11 +73,17 @@ export default function AnnouncementTable({
     return [...announcements]
       .sort(
         (a, b) =>
+          Number(Boolean(a.archivedAt)) - Number(Boolean(b.archivedAt)) ||
           new Date(b.publishedAt ?? b.created_at).getTime() -
-          new Date(a.publishedAt ?? a.created_at).getTime()
+            new Date(a.publishedAt ?? a.created_at).getTime()
       )
       .filter((a) => {
-      if (statusFilter !== "all" && a.status !== statusFilter) return false;
+      if (statusFilter === "archived" && !a.archivedAt) return false;
+      if (
+        statusFilter !== "all" &&
+        statusFilter !== "archived" &&
+        (a.archivedAt || a.status !== statusFilter)
+      ) return false;
       if (typeFilter !== "all" && a.type !== typeFilter) return false;
 
       const posted = a.publishedAt ?? a.created_at;
@@ -121,11 +130,14 @@ export default function AnnouncementTable({
           className="w-full sm:w-[130px]"
           value={statusFilter}
           onChange={(v) => {
-            setStatusFilter(v as AnnouncementDisplayStatus | "all");
+            setStatusFilter(
+              v as AnnouncementDisplayStatus | "archived" | "all"
+            );
             setPage(1);
           }}
           options={[
             { value: "all", label: "All Status" },
+            { value: "archived", label: "Archived" },
             ...Object.entries(ANNOUNCEMENT_STATUS_CONFIG).map(([value, cfg]) => ({
               value,
               label: cfg.label,
@@ -235,7 +247,11 @@ export default function AnnouncementTable({
                         <AnnouncementTypeBadge type={row.type} />
                       </td>
                       <td className="px-4 py-3">
-                        <AnnouncementStatusBadge status={row.status} />
+                        {row.archivedAt ? (
+                          <ArchivedBadge />
+                        ) : (
+                          <AnnouncementStatusBadge status={row.status} />
+                        )}
                       </td>
                       <td className="px-4 py-3 text-gray-800">
                         <div>{row.postedDateLabel}</div>
@@ -269,6 +285,7 @@ export default function AnnouncementTable({
                           <button
                             type="button"
                             onClick={() => onEdit(row)}
+                            disabled={Boolean(row.archivedAt)}
                             className="rounded-md p-1.5 text-eco-primary hover:bg-eco-light"
                             aria-label="Edit announcement"
                           >
@@ -277,10 +294,11 @@ export default function AnnouncementTable({
                           <button
                             type="button"
                             onClick={() => onDelete(row)}
-                            className="rounded-md p-1.5 text-red-500 hover:bg-red-50"
-                            aria-label="Delete announcement"
+                            disabled={Boolean(row.archivedAt)}
+                            className="rounded-md p-1.5 text-gray-500 hover:bg-gray-100 disabled:cursor-not-allowed disabled:opacity-40"
+                            aria-label="Archive announcement"
                           >
-                            <Trash2 className="h-4 w-4" />
+                            <Archive className="h-4 w-4" />
                           </button>
                         </div>
                       </td>

@@ -178,9 +178,16 @@ export async function sendAdminComplaintMessage(
   }
 }
 
-export async function deleteComplaint(id: string): Promise<ActionResult> {
+export async function archiveComplaint(id: string): Promise<ActionResult> {
   const supabase = await createClient();
-  const { error } = await supabase.from("complaints").delete().eq("id", id);
+  const { error } = await supabase
+    .from("complaints")
+    .update({
+      archived_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+    })
+    .eq("id", id)
+    .is("archived_at", null);
 
   if (error) return { success: false, error: error.message };
 

@@ -1,7 +1,8 @@
 "use client";
 
 import { useState } from "react";
-import { deleteRoute } from "@/app/dashboard/routes/actions";
+import { Archive } from "lucide-react";
+import { archiveRoute } from "@/app/dashboard/routes/actions";
 import type { Route } from "@/types/routes";
 
 type Props = {
@@ -17,10 +18,10 @@ export default function DeleteRouteModal({ route, open, onClose, onSuccess }: Pr
 
   if (!open || !route) return null;
 
-  async function handleDelete() {
+  async function handleArchive() {
     setLoading(true);
     setError(null);
-    const result = await deleteRoute(route!.id);
+    const result = await archiveRoute(route!.id);
     setLoading(false);
     if (!result.success) {
       setError(result.error);
@@ -34,11 +35,12 @@ export default function DeleteRouteModal({ route, open, onClose, onSuccess }: Pr
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
       <div className="absolute inset-0 bg-black/40" onClick={onClose} aria-hidden />
       <div className="relative z-10 w-full max-w-md rounded-xl bg-white p-5 shadow-xl">
-        <h2 className="text-lg font-bold text-gray-900">Delete Route</h2>
+        <h2 className="text-lg font-bold text-gray-900">Archive Route</h2>
         <p className="mt-2 text-sm text-gray-600">
-          Are you sure you want to delete{" "}
+          Move{" "}
           <span className="font-semibold text-gray-900">{route.routeCode}</span> (
-          {route.name})? This action cannot be undone.
+          {route.name}) to the archive? It will remain in the list with an
+          Archived status.
         </p>
         {error && <p className="mt-2 text-sm text-red-600">{error}</p>}
         <div className="mt-5 flex justify-end gap-2">
@@ -51,11 +53,12 @@ export default function DeleteRouteModal({ route, open, onClose, onSuccess }: Pr
           </button>
           <button
             type="button"
-            onClick={handleDelete}
+            onClick={handleArchive}
             disabled={loading}
-            className="rounded-lg bg-red-600 px-4 py-2 text-sm font-medium text-white hover:bg-red-700 disabled:opacity-60"
+            className="inline-flex items-center gap-2 rounded-lg bg-gray-700 px-4 py-2 text-sm font-medium text-white hover:bg-gray-800 disabled:opacity-60"
           >
-            {loading ? "Deleting..." : "Delete"}
+            <Archive className="h-4 w-4" />
+            {loading ? "Archiving..." : "Archive"}
           </button>
         </div>
       </div>

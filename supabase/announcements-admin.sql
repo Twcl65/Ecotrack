@@ -6,7 +6,7 @@ CREATE TABLE IF NOT EXISTS announcements (
   subtitle TEXT DEFAULT '',
   content TEXT NOT NULL,
   announcement_type TEXT NOT NULL DEFAULT 'general' CHECK (
-    announcement_type IN ('schedule', 'notice', 'general', 'guidelines', 'holiday')
+    announcement_type IN ('schedule', 'notice', 'general', 'guidelines', 'holiday', 'reminder')
   ),
   audience TEXT NOT NULL DEFAULT 'all_residents' CHECK (
     audience IN ('all_residents', 'barangay_residents', 'staff')
@@ -17,6 +17,7 @@ CREATE TABLE IF NOT EXISTS announcements (
   published_at TIMESTAMPTZ,
   expires_at TIMESTAMPTZ,
   views INT NOT NULL DEFAULT 0,
+  archived_at TIMESTAMPTZ,
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
@@ -30,12 +31,13 @@ ALTER TABLE announcements ADD COLUMN IF NOT EXISTS published_at TIMESTAMPTZ;
 ALTER TABLE announcements ADD COLUMN IF NOT EXISTS expires_at TIMESTAMPTZ;
 ALTER TABLE announcements ADD COLUMN IF NOT EXISTS views INT NOT NULL DEFAULT 0;
 ALTER TABLE announcements ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW();
+ALTER TABLE announcements ADD COLUMN IF NOT EXISTS archived_at TIMESTAMPTZ;
 
 ALTER TABLE announcements
   DROP CONSTRAINT IF EXISTS announcements_announcement_type_check;
 ALTER TABLE announcements
   ADD CONSTRAINT announcements_announcement_type_check
-  CHECK (announcement_type IN ('schedule', 'notice', 'general', 'guidelines', 'holiday'));
+  CHECK (announcement_type IN ('schedule', 'notice', 'general', 'guidelines', 'holiday', 'reminder'));
 
 ALTER TABLE announcements ENABLE ROW LEVEL SECURITY;
 

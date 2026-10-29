@@ -14,6 +14,8 @@ export type SystemUser = {
   role: UserRole;
   username: string;
   status: UserStatus;
+  emailVerifiedAt: string | null;
+  archivedAt: string | null;
   avatarUrl: string | null;
   lastLoginAt: string | null;
   lastLoginLabel: string | null;

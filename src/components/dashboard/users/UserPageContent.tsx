@@ -59,9 +59,26 @@ export default function UserPageContent({ initialUsers }: Props) {
     handleUpdated(user);
   }, [handleUpdated]);
 
-  const handleDelete = useCallback((id: string) => {
-    setUsers((prev) => prev.filter((u) => u.id !== id));
-    setViewing((v) => (v?.id === id ? null : v));
+  const handleArchive = useCallback((id: string) => {
+    const archivedAt = new Date().toISOString();
+    setUsers((prev) =>
+      prev
+        .map((user) =>
+          user.id === id
+            ? { ...user, archivedAt, status: "inactive" as const }
+            : user
+        )
+        .sort(
+          (a, b) =>
+            Number(Boolean(a.archivedAt)) - Number(Boolean(b.archivedAt)) ||
+            new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+        )
+    );
+    setViewing((current) =>
+      current?.id === id
+        ? { ...current, archivedAt, status: "inactive" }
+        : current
+    );
   }, []);
 
   return (
@@ -73,8 +90,7 @@ export default function UserPageContent({ initialUsers }: Props) {
               User Management
             </h2>
             <p className="mt-0.5 text-xs text-gray-500">
-              Manage administrator, driver, and resident accounts across the
-              ECOTRACK system.
+              Manage driver and resident accounts across the ECOTRACK system.
             </p>
           </div>
           <button
@@ -123,7 +139,7 @@ export default function UserPageContent({ initialUsers }: Props) {
         open={!!deactivating}
         onClose={() => setDeactivating(null)}
         onDeactivateSuccess={handleDeactivate}
-        onDeleteSuccess={handleDelete}
+        onArchiveSuccess={handleArchive}
       />
     </>
   );

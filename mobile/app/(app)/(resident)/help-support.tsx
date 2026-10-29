@@ -19,7 +19,7 @@ const FAQ_ITEMS = [
       'Go to the Complaint tab, tap "Add New Complaint", fill in the details, and submit.',
   },
   {
-    question: "Where can I see LGU announcements?",
+    question: "Where can I see MENRO announcements?",
     answer:
       "Tap the megaphone icon in the header or open Announcements from the dashboard quick actions.",
   },

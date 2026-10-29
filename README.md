@@ -31,7 +31,7 @@ The **service role key** is required for User Management to create login account
 
 ### 3. Set up the database
 
-Open the [Supabase SQL Editor](https://supabase.com/dashboard) and run the contents of `supabase/schema.sql`. This creates tables, RLS policies, and seed data.
+Open the [Supabase SQL Editor](https://supabase.com/dashboard) and run `supabase/schema.sql`, followed by `supabase/users.sql`. These scripts create the tables, RLS policies, seed data, and the signup trigger that adds mobile registrations to admin User Management. Re-run both scripts after application updates to apply idempotent schema changes, including the archive fields.
 
 ### 4. Create an admin user
 

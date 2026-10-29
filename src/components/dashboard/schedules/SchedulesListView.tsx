@@ -1,7 +1,8 @@
 "use client";
 
-import { ChevronLeft, ChevronRight, Pencil, Search, Trash2 } from "lucide-react";
+import { Archive, ChevronLeft, ChevronRight, Pencil, Search } from "lucide-react";
 import { useMemo, useState } from "react";
+import ArchivedBadge from "../ArchivedBadge";
 import ScheduleStatusBadge from "./ScheduleStatusBadge";
 import type { Schedule } from "@/types/schedules";
 
@@ -24,6 +25,7 @@ export default function SchedulesListView({
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
     const newestFirst = [...schedules].sort((a, b) =>
+      Number(Boolean(a.archivedAt)) - Number(Boolean(b.archivedAt)) ||
       b.date.localeCompare(a.date)
     );
     if (!q) return newestFirst;
@@ -119,13 +121,18 @@ export default function SchedulesListView({
                   </td>
                   <td className="px-4 py-3 text-gray-800">{row.driver ?? "—"}</td>
                   <td className="px-4 py-3">
-                    <ScheduleStatusBadge status={row.status} />
+                    {row.archivedAt ? (
+                      <ArchivedBadge />
+                    ) : (
+                      <ScheduleStatusBadge status={row.status} />
+                    )}
                   </td>
                   <td className="px-4 py-3">
                     <div className="flex items-center gap-2">
                       <button
                         type="button"
                         onClick={() => onEdit(row)}
+                        disabled={Boolean(row.archivedAt)}
                         className="rounded-md p-1.5 text-eco-primary hover:bg-eco-light"
                         aria-label="Edit schedule"
                       >
@@ -134,10 +141,11 @@ export default function SchedulesListView({
                       <button
                         type="button"
                         onClick={() => onDelete(row)}
-                        className="rounded-md p-1.5 text-red-500 hover:bg-red-50"
-                        aria-label="Delete schedule"
+                        disabled={Boolean(row.archivedAt)}
+                        className="rounded-md p-1.5 text-gray-500 hover:bg-gray-100 disabled:cursor-not-allowed disabled:opacity-40"
+                        aria-label="Archive schedule"
                       >
-                        <Trash2 className="h-4 w-4" />
+                        <Archive className="h-4 w-4" />
                       </button>
                     </div>
                   </td>

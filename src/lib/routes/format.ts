@@ -66,6 +66,7 @@ export function mapRouteRow(
     area?: string | null;
     driver_name?: string | null;
     estimated_minutes?: number | null;
+    archived_at?: string | null;
   },
   index: number,
   stops: RouteStop[] = []
@@ -86,6 +87,7 @@ export function mapRouteRow(
     estimatedMinutes: row.estimated_minutes ?? estimateMinutes(distanceKm),
     driverName: row.driver_name ?? "",
     status: row.status as RouteStatus,
+    archivedAt: row.archived_at ?? null,
     createdAt: row.created_at,
     stops,
   };

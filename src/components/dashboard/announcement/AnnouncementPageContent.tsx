@@ -55,8 +55,26 @@ export default function AnnouncementPageContent({
     });
   }, []);
 
-  const handleDelete = useCallback((id: string) => {
-    setAnnouncements((prev) => prev.filter((a) => a.id !== id));
+  const handleArchive = useCallback((id: string) => {
+    setAnnouncements((prev) =>
+      prev
+        .map((announcement) =>
+          announcement.id === id
+            ? { ...announcement, archivedAt: new Date().toISOString() }
+            : announcement
+        )
+        .sort(
+          (a, b) =>
+            Number(Boolean(a.archivedAt)) - Number(Boolean(b.archivedAt)) ||
+            new Date(b.publishedAt ?? b.created_at).getTime() -
+              new Date(a.publishedAt ?? a.created_at).getTime()
+        )
+    );
+    setViewing((current) =>
+      current?.id === id
+        ? { ...current, archivedAt: new Date().toISOString() }
+        : current
+    );
   }, []);
 
   const handleViewsUpdated = useCallback((announcement: Announcement) => {
@@ -122,7 +140,7 @@ export default function AnnouncementPageContent({
         announcement={deleting}
         open={!!deleting}
         onClose={() => setDeleting(null)}
-        onSuccess={handleDelete}
+        onSuccess={handleArchive}
       />
     </>
   );

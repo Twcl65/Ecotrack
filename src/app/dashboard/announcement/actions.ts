@@ -96,9 +96,16 @@ export async function updateAnnouncement(
   return { success: true, announcement: mapAnnouncementRow(data) };
 }
 
-export async function deleteAnnouncement(id: string): Promise<ActionResult> {
+export async function archiveAnnouncement(id: string): Promise<ActionResult> {
   const supabase = await createClient();
-  const { error } = await supabase.from("announcements").delete().eq("id", id);
+  const { error } = await supabase
+    .from("announcements")
+    .update({
+      archived_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+    })
+    .eq("id", id)
+    .is("archived_at", null);
 
   if (error) return { success: false, error: error.message };
 

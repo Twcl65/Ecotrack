@@ -3,7 +3,8 @@ export type AnnouncementType =
   | "notice"
   | "general"
   | "guidelines"
-  | "holiday";
+  | "holiday"
+  | "reminder";
 
 export type AnnouncementDisplayStatus = "active" | "scheduled" | "expired";
 
@@ -23,6 +24,7 @@ export type Announcement = {
   audience: AnnouncementAudience;
   publishStatus: PublishStatus;
   status: AnnouncementDisplayStatus;
+  archivedAt: string | null;
   publishedAt: string | null;
   expiresAt: string | null;
   views: number;
@@ -63,6 +65,7 @@ export const ANNOUNCEMENT_TYPE_OPTIONS: {
   { value: "general", label: "General" },
   { value: "guidelines", label: "Guidelines" },
   { value: "holiday", label: "Holiday" },
+  { value: "reminder", label: "Reminder" },
 ];
 
 export const ANNOUNCEMENT_AUDIENCE_OPTIONS: {
@@ -102,6 +105,11 @@ export const ANNOUNCEMENT_TYPE_CONFIG: Record<
     label: "Holiday",
     className: "bg-purple-100 text-purple-800",
     subtitle: "Holiday Notice",
+  },
+  reminder: {
+    label: "Reminder",
+    className: "bg-amber-100 text-amber-800",
+    subtitle: "Reminder",
   },
 };
 

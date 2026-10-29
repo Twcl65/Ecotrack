@@ -240,7 +240,7 @@ export default function DriverProfileScreen() {
         )}
 
         <Text style={styles.note}>
-          Password changes are managed through Supabase Auth. Contact your LGU
+          Password changes are managed through Supabase Auth. Contact your MENRO
           administrator if you need help resetting your account.
         </Text>
       </ScrollView>

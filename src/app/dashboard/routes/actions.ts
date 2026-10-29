@@ -140,9 +140,13 @@ export async function updateRoute(
   return { success: true, route: route ?? undefined };
 }
 
-export async function deleteRoute(id: string): Promise<ActionResult> {
+export async function archiveRoute(id: string): Promise<ActionResult> {
   const supabase = await createClient();
-  const { error } = await supabase.from("routes").delete().eq("id", id);
+  const { error } = await supabase
+    .from("routes")
+    .update({ archived_at: new Date().toISOString() })
+    .eq("id", id)
+    .is("archived_at", null);
 
   if (error) return { success: false, error: error.message };
 

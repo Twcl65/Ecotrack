@@ -8,10 +8,14 @@ export async function getSystemUsers(): Promise<SystemUser[]> {
     const { data, error } = await supabase
       .from("system_users")
       .select("*")
+      .neq("role", "admin")
+      .neq("role", "administrator")
       .order("created_at", { ascending: false });
 
     if (error || !data?.length) return [];
-    return data.map(mapSystemUserRow);
+    return data
+      .map(mapSystemUserRow)
+      .sort((a, b) => Number(Boolean(a.archivedAt)) - Number(Boolean(b.archivedAt)));
   } catch {
     return [];
   }

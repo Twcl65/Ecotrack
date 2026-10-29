@@ -11,7 +11,8 @@ async function getRoutesCount(): Promise<number> {
     const { count, error } = await supabase
       .from("routes")
       .select("*", { count: "exact", head: true })
-      .eq("status", "active");
+      .eq("status", "active")
+      .is("archived_at", null);
 
     if (error || count == null) return 0;
     return count;

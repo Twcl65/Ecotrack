@@ -1,10 +1,10 @@
 "use client";
 
-import { Trash2, UserRoundMinus, X } from "lucide-react";
+import { Archive, UserRoundMinus, X } from "lucide-react";
 import { useState } from "react";
 import {
+  archiveSystemUser,
   deactivateSystemUser,
-  deleteSystemUser,
 } from "@/app/dashboard/users/actions";
 import type { SystemUser } from "@/types/user";
 import { USER_ROLE_CONFIG } from "@/types/user";
@@ -14,7 +14,7 @@ type Props = {
   open: boolean;
   onClose: () => void;
   onDeactivateSuccess: (user: SystemUser) => void;
-  onDeleteSuccess: (id: string) => void;
+  onArchiveSuccess: (id: string) => void;
 };
 
 export default function DeactivateUserModal({
@@ -22,9 +22,9 @@ export default function DeactivateUserModal({
   open,
   onClose,
   onDeactivateSuccess,
-  onDeleteSuccess,
+  onArchiveSuccess,
 }: Props) {
-  const [loading, setLoading] = useState<"deactivate" | "delete" | null>(null);
+  const [loading, setLoading] = useState<"deactivate" | "archive" | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   if (!open || !user) return null;
@@ -44,10 +44,10 @@ export default function DeactivateUserModal({
     onClose();
   }
 
-  async function handleDelete() {
-    setLoading("delete");
+  async function handleArchive() {
+    setLoading("archive");
     setError(null);
-    const result = await deleteSystemUser(user!.id);
+    const result = await archiveSystemUser(user!.id);
     setLoading(null);
 
     if (!result.success) {
@@ -55,7 +55,7 @@ export default function DeactivateUserModal({
       return;
     }
 
-    onDeleteSuccess(user!.id);
+    onArchiveSuccess(user!.id);
     onClose();
   }
 
@@ -66,7 +66,7 @@ export default function DeactivateUserModal({
       <div className="absolute inset-0 bg-black/40" onClick={onClose} aria-hidden />
       <div className="relative z-10 w-full max-w-md rounded-xl bg-white p-5 shadow-xl">
         <div className="flex items-start justify-between">
-          <h2 className="text-lg font-bold text-gray-900">Remove User</h2>
+          <h2 className="text-lg font-bold text-gray-900">Manage User</h2>
           <button
             type="button"
             onClick={onClose}
@@ -81,8 +81,8 @@ export default function DeactivateUserModal({
           What would you like to do with this user?
         </p>
         <p className="mt-1 text-center text-sm text-gray-500">
-          Deactivate to block sign-in while keeping their record, or permanently
-          delete the account.
+          Deactivate the account, or archive it to keep its record while
+          removing it from active user management.
         </p>
 
         <div className="mt-4 rounded-lg bg-gray-50 px-3 py-3">
@@ -119,12 +119,12 @@ export default function DeactivateUserModal({
           </button>
           <button
             type="button"
-            onClick={handleDelete}
+            onClick={handleArchive}
             disabled={busy}
-            className="inline-flex items-center justify-center gap-2 rounded-lg bg-red-500 px-4 py-2 text-sm font-semibold text-white hover:bg-red-600 disabled:opacity-60"
+            className="inline-flex items-center justify-center gap-2 rounded-lg bg-gray-700 px-4 py-2 text-sm font-semibold text-white hover:bg-gray-800 disabled:opacity-60"
           >
-            <Trash2 className="h-4 w-4" />
-            {loading === "delete" ? "Deleting..." : "Delete User"}
+            <Archive className="h-4 w-4" />
+            {loading === "archive" ? "Archiving..." : "Archive User"}
           </button>
         </div>
       </div>

@@ -1,6 +1,6 @@
 "use client";
 
-import { Camera, ChevronDown, ImagePlus, X } from "lucide-react";
+import { Camera, ChevronDown, Eye, EyeOff, ImagePlus, X } from "lucide-react";
 import { useEffect, useState } from "react";
 import {
   createSystemUser,
@@ -39,6 +39,8 @@ export default function UserFormModal({
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [avatarFile, setAvatarFile] = useState<File | null>(null);
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [avatarPreview, setAvatarPreview] = useState<string | null>(() =>
     mode === "edit" && user ? user.avatarUrl : null
   );
@@ -258,16 +260,31 @@ export default function UserFormModal({
               </Field>
               {mode === "add" ? (
                 <Field label="Password" required>
-                  <input
-                    type="password"
-                    required
-                    value={form.password}
-                    onChange={(e) =>
-                      setForm((f) => ({ ...f, password: e.target.value }))
-                    }
-                    placeholder="Password"
-                    className={inputClass}
-                  />
+                  <div className="relative">
+                    <input
+                      type={showPassword ? "text" : "password"}
+                      required
+                      value={form.password}
+                      onChange={(e) =>
+                        setForm((f) => ({ ...f, password: e.target.value }))
+                      }
+                      placeholder="Password"
+                      className={`${inputClass} pr-10`}
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowPassword((show) => !show)}
+                      className="absolute inset-y-0 right-0 flex items-center px-3 text-gray-400 hover:text-gray-600"
+                      aria-label={showPassword ? "Hide password" : "Show password"}
+                      aria-pressed={showPassword}
+                    >
+                      {showPassword ? (
+                        <EyeOff className="h-4 w-4" aria-hidden="true" />
+                      ) : (
+                        <Eye className="h-4 w-4" aria-hidden="true" />
+                      )}
+                    </button>
+                  </div>
                 </Field>
               ) : (
                 <>
@@ -314,19 +331,40 @@ export default function UserFormModal({
               </Field>
               {mode === "add" ? (
                 <Field label="Confirm Password" required>
-                  <input
-                    type="password"
-                    required
-                    value={form.confirmPassword}
-                    onChange={(e) =>
-                      setForm((f) => ({
-                        ...f,
-                        confirmPassword: e.target.value,
-                      }))
-                    }
-                    placeholder="Confirm password"
-                    className={inputClass}
-                  />
+                  <div className="relative">
+                    <input
+                      type={showConfirmPassword ? "text" : "password"}
+                      required
+                      value={form.confirmPassword}
+                      onChange={(e) =>
+                        setForm((f) => ({
+                          ...f,
+                          confirmPassword: e.target.value,
+                        }))
+                      }
+                      placeholder="Confirm password"
+                      className={`${inputClass} pr-10`}
+                    />
+                    <button
+                      type="button"
+                      onClick={() =>
+                        setShowConfirmPassword((show) => !show)
+                      }
+                      className="absolute inset-y-0 right-0 flex items-center px-3 text-gray-400 hover:text-gray-600"
+                      aria-label={
+                        showConfirmPassword
+                          ? "Hide confirm password"
+                          : "Show confirm password"
+                      }
+                      aria-pressed={showConfirmPassword}
+                    >
+                      {showConfirmPassword ? (
+                        <EyeOff className="h-4 w-4" aria-hidden="true" />
+                      ) : (
+                        <Eye className="h-4 w-4" aria-hidden="true" />
+                      )}
+                    </button>
+                  </div>
                 </Field>
               ) : (
                 <Field label="Confirm New Password">

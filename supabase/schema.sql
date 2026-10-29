@@ -7,8 +7,10 @@ CREATE TABLE IF NOT EXISTS routes (
   name TEXT NOT NULL,
   distance_km DECIMAL(10, 2) NOT NULL DEFAULT 0,
   status TEXT NOT NULL DEFAULT 'active' CHECK (status IN ('active', 'inactive', 'completed')),
+  archived_at TIMESTAMPTZ,
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
+ALTER TABLE routes ADD COLUMN IF NOT EXISTS archived_at TIMESTAMPTZ;
 
 -- Active waste collections
 CREATE TABLE IF NOT EXISTS collections (
@@ -63,12 +65,18 @@ ALTER TABLE feature_cards ENABLE ROW LEVEL SECURITY;
 ALTER TABLE profiles ENABLE ROW LEVEL SECURITY;
 
 -- Public read for landing page stats and features
+DROP POLICY IF EXISTS "Public read site_metrics" ON site_metrics;
+DROP POLICY IF EXISTS "Public read feature_cards" ON feature_cards;
+DROP POLICY IF EXISTS "Public read routes count" ON routes;
+DROP POLICY IF EXISTS "Public read collections count" ON collections;
 CREATE POLICY "Public read site_metrics" ON site_metrics FOR SELECT USING (true);
 CREATE POLICY "Public read feature_cards" ON feature_cards FOR SELECT USING (true);
 CREATE POLICY "Public read routes count" ON routes FOR SELECT USING (true);
 CREATE POLICY "Public read collections count" ON collections FOR SELECT USING (true);
 
 -- Authenticated users can read profiles
+DROP POLICY IF EXISTS "Users read own profile" ON profiles;
+DROP POLICY IF EXISTS "Users update own profile" ON profiles;
 CREATE POLICY "Users read own profile" ON profiles FOR SELECT USING (auth.uid() = id);
 CREATE POLICY "Users update own profile" ON profiles FOR UPDATE USING (auth.uid() = id);
 
@@ -183,7 +191,7 @@ CREATE TABLE IF NOT EXISTS announcements (
   subtitle TEXT DEFAULT '',
   content TEXT NOT NULL,
   announcement_type TEXT NOT NULL DEFAULT 'general' CHECK (
-    announcement_type IN ('schedule', 'notice', 'general', 'guidelines', 'holiday')
+    announcement_type IN ('schedule', 'notice', 'general', 'guidelines', 'holiday', 'reminder')
   ),
   audience TEXT NOT NULL DEFAULT 'all_residents' CHECK (
     audience IN ('all_residents', 'barangay_residents', 'staff')
@@ -194,6 +202,7 @@ CREATE TABLE IF NOT EXISTS announcements (
   published_at TIMESTAMPTZ,
   expires_at TIMESTAMPTZ,
   views INT NOT NULL DEFAULT 0,
+  archived_at TIMESTAMPTZ,
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
@@ -202,7 +211,8 @@ ALTER TABLE announcements
   DROP CONSTRAINT IF EXISTS announcements_announcement_type_check;
 ALTER TABLE announcements
   ADD CONSTRAINT announcements_announcement_type_check
-  CHECK (announcement_type IN ('schedule', 'notice', 'general', 'guidelines', 'holiday'));
+  CHECK (announcement_type IN ('schedule', 'notice', 'general', 'guidelines', 'holiday', 'reminder'));
+ALTER TABLE announcements ADD COLUMN IF NOT EXISTS archived_at TIMESTAMPTZ;
 
 ALTER TABLE dashboard_kpis ENABLE ROW LEVEL SECURITY;
 ALTER TABLE collection_trends ENABLE ROW LEVEL SECURITY;
@@ -210,6 +220,14 @@ ALTER TABLE collection_status_summary ENABLE ROW LEVEL SECURITY;
 ALTER TABLE weekly_schedules ENABLE ROW LEVEL SECURITY;
 ALTER TABLE announcements ENABLE ROW LEVEL SECURITY;
 
+DROP POLICY IF EXISTS "Auth read dashboard_kpis" ON dashboard_kpis;
+DROP POLICY IF EXISTS "Auth read collection_trends" ON collection_trends;
+DROP POLICY IF EXISTS "Auth read collection_status_summary" ON collection_status_summary;
+DROP POLICY IF EXISTS "Auth read weekly_schedules" ON weekly_schedules;
+DROP POLICY IF EXISTS "Auth read announcements" ON announcements;
+DROP POLICY IF EXISTS "Auth insert announcements" ON announcements;
+DROP POLICY IF EXISTS "Auth update announcements" ON announcements;
+DROP POLICY IF EXISTS "Auth delete announcements" ON announcements;
 CREATE POLICY "Auth read dashboard_kpis" ON dashboard_kpis FOR SELECT TO authenticated USING (true);
 CREATE POLICY "Auth read collection_trends" ON collection_trends FOR SELECT TO authenticated USING (true);
 CREATE POLICY "Auth read collection_status_summary" ON collection_status_summary FOR SELECT TO authenticated USING (true);
@@ -266,12 +284,18 @@ CREATE TABLE IF NOT EXISTS collection_schedules (
     status IN ('ongoing', 'pending', 'completed', 'canceled', 'no_collection', 'maintenance')
   ),
   route_id UUID REFERENCES routes(id) ON DELETE SET NULL,
+  archived_at TIMESTAMPTZ,
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
+ALTER TABLE collection_schedules ADD COLUMN IF NOT EXISTS archived_at TIMESTAMPTZ;
 ALTER TABLE collection_schedules ENABLE ROW LEVEL SECURITY;
 
+DROP POLICY IF EXISTS "Auth read collection_schedules" ON collection_schedules;
+DROP POLICY IF EXISTS "Auth insert collection_schedules" ON collection_schedules;
+DROP POLICY IF EXISTS "Auth update collection_schedules" ON collection_schedules;
+DROP POLICY IF EXISTS "Auth delete collection_schedules" ON collection_schedules;
 CREATE POLICY "Auth read collection_schedules" ON collection_schedules FOR SELECT TO authenticated USING (true);
 CREATE POLICY "Auth insert collection_schedules" ON collection_schedules FOR INSERT TO authenticated WITH CHECK (true);
 CREATE POLICY "Auth update collection_schedules" ON collection_schedules FOR UPDATE TO authenticated USING (true);
@@ -376,12 +400,18 @@ CREATE TABLE IF NOT EXISTS barangays (
   name TEXT NOT NULL UNIQUE,
   population INT NOT NULL DEFAULT 0 CHECK (population >= 0),
   status TEXT NOT NULL DEFAULT 'active' CHECK (status IN ('active', 'inactive')),
+  archived_at TIMESTAMPTZ,
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
+ALTER TABLE barangays ADD COLUMN IF NOT EXISTS archived_at TIMESTAMPTZ;
 ALTER TABLE barangays ENABLE ROW LEVEL SECURITY;
 
+DROP POLICY IF EXISTS "Auth read barangays" ON barangays;
+DROP POLICY IF EXISTS "Auth insert barangays" ON barangays;
+DROP POLICY IF EXISTS "Auth update barangays" ON barangays;
+DROP POLICY IF EXISTS "Auth delete barangays" ON barangays;
 CREATE POLICY "Auth read barangays" ON barangays FOR SELECT TO authenticated USING (true);
 CREATE POLICY "Auth insert barangays" ON barangays FOR INSERT TO authenticated WITH CHECK (true);
 CREATE POLICY "Auth update barangays" ON barangays FOR UPDATE TO authenticated USING (true);
@@ -470,10 +500,12 @@ CREATE TABLE IF NOT EXISTS complaints (
   ),
   filed_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   attachment_url TEXT,
+  archived_at TIMESTAMPTZ,
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
+ALTER TABLE complaints ADD COLUMN IF NOT EXISTS archived_at TIMESTAMPTZ;
 ALTER TABLE complaints ENABLE ROW LEVEL SECURITY;
 
 DROP POLICY IF EXISTS "Auth read complaints" ON complaints;
@@ -604,6 +636,9 @@ CREATE TABLE IF NOT EXISTS generated_reports (
 
 ALTER TABLE generated_reports ENABLE ROW LEVEL SECURITY;
 
+DROP POLICY IF EXISTS "Auth read generated_reports" ON generated_reports;
+DROP POLICY IF EXISTS "Auth insert generated_reports" ON generated_reports;
+DROP POLICY IF EXISTS "Auth delete generated_reports" ON generated_reports;
 CREATE POLICY "Auth read generated_reports" ON generated_reports FOR SELECT TO authenticated USING (true);
 CREATE POLICY "Auth insert generated_reports" ON generated_reports FOR INSERT TO authenticated WITH CHECK (true);
 CREATE POLICY "Auth delete generated_reports" ON generated_reports FOR DELETE TO authenticated USING (true);

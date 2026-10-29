@@ -11,6 +11,7 @@ import {
   X,
 } from "lucide-react";
 import RouteStatusBadge from "./RouteStatusBadge";
+import ArchivedBadge from "../ArchivedBadge";
 import type { Route, RouteStopStatus } from "@/types/routes";
 import {
   formatDistance,
@@ -72,7 +73,11 @@ export default function RouteDetailsModal({ route, open, onClose, onEdit }: Prop
                 {route.routeCode}
               </span>
               <span className="text-sm font-semibold text-gray-800">{routeTitle(route)}</span>
-              <RouteStatusBadge status={route.status} />
+              {route.archivedAt ? (
+                <ArchivedBadge />
+              ) : (
+                <RouteStatusBadge status={route.status} />
+              )}
             </div>
           </div>
           <button
@@ -125,6 +130,7 @@ export default function RouteDetailsModal({ route, open, onClose, onEdit }: Prop
           </div>
         </div>
 
+        {!route.archivedAt ? (
         <div className="flex gap-3 border-t border-gray-100 px-5 py-4">
           <button
             type="button"
@@ -145,6 +151,7 @@ export default function RouteDetailsModal({ route, open, onClose, onEdit }: Prop
             Start Route
           </button>
         </div>
+        ) : null}
       </div>
     </div>
   );

@@ -11,10 +11,13 @@ CREATE TABLE IF NOT EXISTS collection_schedules (
     status IN ('ongoing', 'pending', 'completed', 'canceled', 'no_collection', 'maintenance')
   ),
   route_id UUID REFERENCES routes(id) ON DELETE SET NULL,
+  archived_at TIMESTAMPTZ,
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
+ALTER TABLE collection_schedules
+  ADD COLUMN IF NOT EXISTS archived_at TIMESTAMPTZ;
 ALTER TABLE collection_schedules ENABLE ROW LEVEL SECURITY;
 
 DROP POLICY IF EXISTS "Auth read collection_schedules" ON collection_schedules;

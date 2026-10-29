@@ -14,10 +14,12 @@ import {
 } from "lucide-react";
 import { useState } from "react";
 import { updateSystemUserStatus } from "@/app/dashboard/users/actions";
+import ArchivedBadge from "../ArchivedBadge";
 import { formatPhoneDisplay } from "@/lib/users/format";
 import {
   UserRolePill,
   UserStatusBadge,
+  UserVerificationBadge,
 } from "./UserBadges";
 import type { SystemUser, UserStatus } from "@/types/user";
 import {
@@ -86,7 +88,13 @@ export default function UserDetailsModal({
                 <h3 className="text-lg font-bold text-gray-900">
                   {user.fullName}
                 </h3>
-                <UserStatusBadge status={user.status} />
+                {user.archivedAt ? (
+                  <ArchivedBadge />
+                ) : user.emailVerifiedAt ? (
+                  <UserStatusBadge status={user.status} />
+                ) : (
+                  <UserVerificationBadge verified={false} />
+                )}
                 <UserRolePill role={user.role} />
               </div>
               <p className="mt-1 text-sm text-gray-500">{user.email}</p>
@@ -117,15 +125,24 @@ export default function UserDetailsModal({
               label="Last Login"
               value={user.lastLoginLabel ?? "Never logged in"}
             />
+            {!user.emailVerifiedAt ? (
+              <li className="flex items-center justify-between gap-3 text-sm">
+                <span className="text-gray-600">Email verification</span>
+                <UserVerificationBadge verified={false} />
+              </li>
+            ) : null}
             <li className="flex items-center justify-between gap-3 text-sm">
               <div className="flex items-center gap-2 text-gray-600">
                 <Shield className="h-4 w-4 text-gray-400" />
                 <span>Status</span>
               </div>
+              {user.archivedAt ? (
+                <ArchivedBadge />
+              ) : (
               <div className="relative">
                 <select
                   value={user.status}
-                  disabled={statusLoading}
+                  disabled={statusLoading || Boolean(user.archivedAt)}
                   onChange={(e) =>
                     handleStatusChange(e.target.value as UserStatus)
                   }
@@ -139,6 +156,7 @@ export default function UserDetailsModal({
                 </select>
                 <ChevronDown className="pointer-events-none absolute right-2 top-1/2 h-3 w-3 -translate-y-1/2 text-gray-500" />
               </div>
+              )}
             </li>
           </ul>
 
@@ -164,29 +182,33 @@ export default function UserDetailsModal({
         </div>
 
         <div className="flex gap-2 border-t border-gray-100 px-5 py-4">
-          <button
-            type="button"
-            onClick={() => {
-              onClose();
-              onEdit(user);
-            }}
-            className="inline-flex flex-1 items-center justify-center gap-2 rounded-lg border border-eco-primary px-4 py-2 text-sm font-semibold text-eco-primary hover:bg-eco-light"
-          >
-            <Pencil className="h-4 w-4" />
-            Edit User
-          </button>
-          <button
-            type="button"
-            onClick={() => {
-              onClose();
-              onDeactivate(user);
-            }}
-            disabled={user.status === "inactive"}
-            className="inline-flex flex-1 items-center justify-center gap-2 rounded-lg border border-red-500 px-4 py-2 text-sm font-semibold text-red-500 hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-50"
-          >
-            <UserRoundMinus className="h-4 w-4" />
-            Deactivate User
-          </button>
+          {!user.archivedAt ? (
+            <>
+              <button
+                type="button"
+                onClick={() => {
+                  onClose();
+                  onEdit(user);
+                }}
+                className="inline-flex flex-1 items-center justify-center gap-2 rounded-lg border border-eco-primary px-4 py-2 text-sm font-semibold text-eco-primary hover:bg-eco-light"
+              >
+                <Pencil className="h-4 w-4" />
+                Edit User
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  onClose();
+                  onDeactivate(user);
+                }}
+                disabled={user.status === "inactive"}
+                className="inline-flex flex-1 items-center justify-center gap-2 rounded-lg border border-red-500 px-4 py-2 text-sm font-semibold text-red-500 hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                <UserRoundMinus className="h-4 w-4" />
+                Deactivate User
+              </button>
+            </>
+          ) : null}
         </div>
       </div>
     </div>

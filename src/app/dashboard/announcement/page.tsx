@@ -2,7 +2,7 @@ import AnnouncementPageContent from "@/components/dashboard/announcement/Announc
 import { getAnnouncements } from "@/lib/announcement/data";
 
 export default async function AnnouncementPage() {
-  const announcements = await getAnnouncements();
+  const announcements = await getAnnouncements(true);
 
   return <AnnouncementPageContent initialAnnouncements={announcements} />;
 }

@@ -1,6 +1,7 @@
 "use client";
 
 import {
+  Archive,
   Calendar,
   ChevronDown,
   ChevronLeft,
@@ -8,11 +9,15 @@ import {
   Eye,
   Pencil,
   Search,
-  Trash2,
 } from "lucide-react";
 import { useMemo, useState } from "react";
 import { formatPhoneDisplay } from "@/lib/users/format";
-import { UserRoleBadge, UserStatusBadge } from "./UserBadges";
+import ArchivedBadge from "../ArchivedBadge";
+import {
+  UserRoleBadge,
+  UserStatusBadge,
+  UserVerificationBadge,
+} from "./UserBadges";
 import type { SystemUser, UserRole, UserStatus } from "@/types/user";
 import { USER_ROLE_OPTIONS, USER_STATUS_CONFIG } from "@/types/user";
 
@@ -36,7 +41,9 @@ export default function UserTable({
 }: Props) {
   const [search, setSearch] = useState("");
   const [roleFilter, setRoleFilter] = useState<UserRole | "all">("all");
-  const [statusFilter, setStatusFilter] = useState<UserStatus | "all">("all");
+  const [statusFilter, setStatusFilter] = useState<
+    UserStatus | "pending_verification" | "archived" | "all"
+  >("all");
   const [createdDate, setCreatedDate] = useState("");
   const [page, setPage] = useState(1);
 
@@ -45,21 +52,37 @@ export default function UserTable({
     return [...users]
       .sort(
         (a, b) =>
+          Number(Boolean(a.archivedAt)) - Number(Boolean(b.archivedAt)) ||
           new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
       )
       .filter((u) => {
-      if (roleFilter !== "all" && u.role !== roleFilter) return false;
-      if (statusFilter !== "all" && u.status !== statusFilter) return false;
-      if (createdDate && u.createdAt.slice(0, 10) !== createdDate) return false;
+        if (roleFilter !== "all" && u.role !== roleFilter) return false;
+        if (statusFilter === "archived" && !u.archivedAt) return false;
+        if (
+          u.archivedAt &&
+          statusFilter !== "archived" &&
+          statusFilter !== "all"
+        ) return false;
+        if (
+          statusFilter === "pending_verification" &&
+          u.emailVerifiedAt
+        ) return false;
+        if (
+          statusFilter !== "all" &&
+          statusFilter !== "pending_verification" &&
+          statusFilter !== "archived" &&
+          u.status !== statusFilter
+        ) return false;
+        if (createdDate && u.createdAt.slice(0, 10) !== createdDate) return false;
 
-      if (!q) return true;
-      return (
-        u.fullName.toLowerCase().includes(q) ||
-        u.email.toLowerCase().includes(q) ||
-        u.userCode.toLowerCase().includes(q) ||
-        u.username.toLowerCase().includes(q) ||
-        u.phone.includes(q)
-      );
+        if (!q) return true;
+        return (
+          u.fullName.toLowerCase().includes(q) ||
+          u.email.toLowerCase().includes(q) ||
+          u.userCode.toLowerCase().includes(q) ||
+          u.username.toLowerCase().includes(q) ||
+          u.phone.includes(q)
+        );
       });
   }, [users, search, roleFilter, statusFilter, createdDate]);
 
@@ -110,11 +133,18 @@ export default function UserTable({
           className="w-full sm:w-[130px]"
           value={statusFilter}
           onChange={(v) => {
-            setStatusFilter(v as UserStatus | "all");
+            setStatusFilter(
+              v as UserStatus | "pending_verification" | "archived" | "all"
+            );
             setPage(1);
           }}
           options={[
             { value: "all", label: "All Status" },
+            { value: "archived", label: "Archived" },
+            {
+              value: "pending_verification",
+              label: "Waiting for verification",
+            },
             ...Object.entries(USER_STATUS_CONFIG).map(([value, cfg]) => ({
               value,
               label: cfg.label,
@@ -205,7 +235,13 @@ export default function UserTable({
                       {formatPhoneDisplay(row.phone)}
                     </td>
                     <td className="px-4 py-3">
-                      <UserStatusBadge status={row.status} />
+                      {row.archivedAt ? (
+                        <ArchivedBadge />
+                      ) : row.emailVerifiedAt ? (
+                        <UserStatusBadge status={row.status} />
+                      ) : (
+                        <UserVerificationBadge verified={false} />
+                      )}
                     </td>
                     <td className="px-4 py-3 text-gray-800">
                       <div>{row.dateLabel}</div>
@@ -226,6 +262,7 @@ export default function UserTable({
                         <button
                           type="button"
                           onClick={() => onEdit(row)}
+                          disabled={Boolean(row.archivedAt)}
                           className="rounded-md p-1.5 text-amber-600 hover:bg-amber-50"
                           aria-label="Edit user"
                         >
@@ -234,10 +271,11 @@ export default function UserTable({
                         <button
                           type="button"
                           onClick={() => onDelete(row)}
-                          className="rounded-md p-1.5 text-red-500 hover:bg-red-50"
-                          aria-label="Remove user"
+                          disabled={Boolean(row.archivedAt)}
+                          className="rounded-md p-1.5 text-gray-500 hover:bg-gray-100 disabled:cursor-not-allowed disabled:opacity-40"
+                          aria-label="Archive user"
                         >
-                          <Trash2 className="h-4 w-4" />
+                          <Archive className="h-4 w-4" />
                         </button>
                       </div>
                     </td>

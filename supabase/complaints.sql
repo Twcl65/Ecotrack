@@ -13,6 +13,7 @@ CREATE TABLE IF NOT EXISTS complaints (
   ),
   filed_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   attachment_url TEXT,
+  archived_at TIMESTAMPTZ,
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
@@ -21,6 +22,7 @@ ALTER TABLE complaints ENABLE ROW LEVEL SECURITY;
 
 ALTER TABLE complaints
   ADD COLUMN IF NOT EXISTS resident_id UUID REFERENCES auth.users(id) ON DELETE SET NULL;
+ALTER TABLE complaints ADD COLUMN IF NOT EXISTS archived_at TIMESTAMPTZ;
 
 DROP POLICY IF EXISTS "Auth read complaints" ON complaints;
 DROP POLICY IF EXISTS "Auth insert complaints" ON complaints;

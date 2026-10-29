@@ -39,6 +39,7 @@ export function mapComplaintRow(row: {
   barangay: string;
   issue: string;
   status: string;
+  archived_at?: string | null;
   filed_at: string;
   attachment_url: string | null;
   created_at: string;
@@ -52,6 +53,7 @@ export function mapComplaintRow(row: {
     barangay: row.barangay,
     issue: row.issue,
     status: row.status as ComplaintStatus,
+    archivedAt: row.archived_at ?? null,
     filedAt: row.filed_at,
     dateLabel: formatComplaintDate(row.filed_at),
     timeLabel: formatComplaintTime(row.filed_at),
