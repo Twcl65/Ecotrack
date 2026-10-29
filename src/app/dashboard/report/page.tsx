@@ -4,6 +4,7 @@ import { getComplaints } from "@/lib/complaint/data";
 import { getGeneratedReports, getWasteKgBaseline } from "@/lib/reports/data";
 import { initialReportFilters } from "@/lib/reports/aggregate";
 import { getSchedules } from "@/lib/schedules/data";
+import { parseScheduleBarangays } from "@/lib/schedules/format";
 import { createClient } from "@/lib/supabase/server";
 
 export default async function ReportPage() {
@@ -38,7 +39,9 @@ export default async function ReportPage() {
   const barangayOptions = [
     ...new Set([
       ...barangays.map((b) => b.name),
-      ...schedules.map((s) => s.barangay),
+      ...schedules.flatMap((schedule) =>
+        parseScheduleBarangays(schedule.barangay)
+      ),
     ]),
   ].sort((a, b) => a.localeCompare(b));
 

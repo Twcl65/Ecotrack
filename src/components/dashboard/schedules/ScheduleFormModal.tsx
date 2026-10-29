@@ -28,7 +28,7 @@ type Props = {
 };
 
 const emptyForm: ScheduleFormValues = {
-  barangay: "",
+  barangay: [],
   collectionDate: "",
   routeId: "",
   timeStart: "04:00",
@@ -49,9 +49,12 @@ function routeCoversBarangay(route: ScheduleRouteOption, barangay: string): bool
 
 function findRouteForBarangay(
   routes: ScheduleRouteOption[],
-  barangay: string
+  barangays: string[]
 ): string {
-  return routes.find((r) => routeCoversBarangay(r, barangay))?.id ?? "";
+  if (barangays.length === 0 || barangays.includes("Maintenance")) return "";
+  return routes.find((route) =>
+    barangays.every((barangay) => routeCoversBarangay(route, barangay))
+  )?.id ?? "";
 }
 
 export default function ScheduleFormModal({
@@ -63,31 +66,36 @@ export default function ScheduleFormModal({
   onClose,
   onSuccess,
 }: Props) {
-  const [form, setForm] = useState<ScheduleFormValues>(emptyForm);
+  const [form, setForm] = useState<ScheduleFormValues>(() =>
+    mode === "edit" && schedule ? scheduleToFormValues(schedule) : emptyForm
+  );
   const [drivers, setDrivers] = useState<string[]>(driverOptions);
   const [barangays, setBarangays] = useState<string[]>(barangayOptions);
   const [routes, setRoutes] = useState<ScheduleRouteOption[]>([]);
-  const [optionsLoading, setOptionsLoading] = useState(false);
+  const [optionsLoading, setOptionsLoading] = useState(true);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     if (!open) return;
-    setError(null);
-    setOptionsLoading(true);
+    let active = true;
     fetchScheduleFormOptions()
       .then(({ driverOptions: freshDrivers, barangayOptions: freshBarangays, routeOptions }) => {
+        if (!active) return;
         setDrivers(freshDrivers);
         setBarangays(freshBarangays);
         setRoutes(routeOptions);
       })
-      .finally(() => setOptionsLoading(false));
-    if (mode === "edit" && schedule) {
-      setForm(scheduleToFormValues(schedule));
-    } else {
-      setForm(emptyForm);
-    }
-  }, [open, mode, schedule]);
+      .catch(() => {
+        if (active) setError("Unable to load schedule options. Please try again.");
+      })
+      .finally(() => {
+        if (active) setOptionsLoading(false);
+      });
+    return () => {
+      active = false;
+    };
+  }, [open]);
 
   if (!open) return null;
 
@@ -96,10 +104,7 @@ export default function ScheduleFormModal({
     driverChoices.unshift(form.driver);
   }
 
-  const barangayChoices = [...barangays];
-  if (form.barangay && !barangayChoices.includes(form.barangay)) {
-    barangayChoices.unshift(form.barangay);
-  }
+  const barangayChoices = barangays;
 
   const routeChoices = [...routes];
   if (form.routeId && !routeChoices.some((r) => r.id === form.routeId) && schedule?.routeLabel) {
@@ -111,8 +116,10 @@ export default function ScheduleFormModal({
     });
   }
 
-  const filteredRoutes = form.barangay
-    ? routeChoices.filter((r) => routeCoversBarangay(r, form.barangay))
+  const filteredRoutes = form.barangay.length > 0 && !form.barangay.includes("Maintenance")
+    ? routeChoices.filter((route) =>
+        form.barangay.every((barangay) => routeCoversBarangay(route, barangay))
+      )
     : routeChoices;
 
   async function handleSubmit(e: React.FormEvent) {
@@ -164,37 +171,55 @@ export default function ScheduleFormModal({
         <form onSubmit={handleSubmit} className="px-5 py-4">
           <div className="grid gap-4 sm:grid-cols-2">
             <Field label="Barangay">
-              <div className="relative">
-                <select
-                  required
-                  disabled={
-                    optionsLoading ||
-                    barangayChoices.filter((b) => b !== "Maintenance").length === 0
-                  }
-                  value={form.barangay}
-                  onChange={(e) => {
-                    const barangay = e.target.value;
-                    const matchedRoute = findRouteForBarangay(routes, barangay);
-                    setForm((prev) => ({
-                      ...prev,
-                      barangay,
-                      routeId: matchedRoute || prev.routeId,
-                    }));
-                  }}
-                  className={selectClass}
+              <details className="group relative">
+                <summary
+                  className={`${selectClass} flex cursor-pointer list-none items-center justify-between ${
+                    optionsLoading ? "pointer-events-none opacity-60" : ""
+                  }`}
                 >
-                  <option value="">
-                    {optionsLoading ? "Loading barangays..." : "Select Barangay"}
-                  </option>
-                  {barangayChoices.map((b) => (
-                    <option key={b} value={b}>
-                      {b}
-                    </option>
-                  ))}
-                </select>
-                <ChevronDown className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
-              </div>
-              {!optionsLoading && barangayChoices.filter((b) => b !== "Maintenance").length === 0 && (
+                  <span className="truncate text-left">
+                    {optionsLoading
+                      ? "Loading barangays..."
+                      : form.barangay.length > 0
+                        ? form.barangay.join(", ")
+                        : "Select Barangays"}
+                  </span>
+                  <ChevronDown className="h-4 w-4 shrink-0 text-gray-400 transition group-open:rotate-180" />
+                </summary>
+                <div className="absolute left-0 right-0 z-20 mt-1 max-h-52 overflow-auto rounded-lg border border-gray-200 bg-white p-2 shadow-lg">
+                  {barangayChoices.map((barangay) => {
+                    const checked = form.barangay.includes(barangay);
+                    return (
+                      <label
+                        key={barangay}
+                        className="flex cursor-pointer items-center gap-2 rounded-md px-2 py-2 text-sm text-gray-700 hover:bg-gray-50"
+                      >
+                        <input
+                          type="checkbox"
+                          checked={checked}
+                          disabled={optionsLoading}
+                          onChange={(event) => {
+                            const selected = event.target.checked
+                              ? [...form.barangay, barangay]
+                              : form.barangay.filter((selected) => selected !== barangay);
+                            setForm((prev) => ({
+                              ...prev,
+                              barangay: selected,
+                              routeId: findRouteForBarangay(routes, selected),
+                            }));
+                          }}
+                          className="h-4 w-4 rounded border-gray-300 text-eco-primary focus:ring-eco-primary"
+                        />
+                        {barangay}
+                      </label>
+                    );
+                  })}
+                  {barangayChoices.length === 0 && (
+                    <p className="px-2 py-2 text-sm text-gray-500">No barangays available.</p>
+                  )}
+                </div>
+              </details>
+              {!optionsLoading && barangayChoices.length === 0 && (
                 <p className="mt-1 text-xs text-amber-600">
                   No barangays in the database. Add barangays under Barangay Management or run{" "}
                   <code className="text-xs">npm run seed</code>.
@@ -205,7 +230,7 @@ export default function ScheduleFormModal({
             <Field label="Route">
               <div className="relative">
                 <select
-                  required={form.barangay !== "Maintenance"}
+                  required={!form.barangay.includes("Maintenance") && form.status !== "no_collection"}
                   disabled={optionsLoading || routeChoices.length === 0}
                   value={form.routeId}
                   onChange={(e) => setField("routeId", e.target.value)}
@@ -227,6 +252,15 @@ export default function ScheduleFormModal({
                   No routes found. Add a route under Route Management first.
                 </p>
               )}
+              {!optionsLoading &&
+                routeChoices.length > 0 &&
+                form.barangay.length > 0 &&
+                !form.barangay.includes("Maintenance") &&
+                filteredRoutes.length === 0 && (
+                  <p className="mt-1 text-xs text-amber-600">
+                    No route covers all selected barangays. Choose a route manually or update Route Management.
+                  </p>
+                )}
             </Field>
 
             <Field label="Collection Date">
@@ -242,7 +276,7 @@ export default function ScheduleFormModal({
               </div>
             </Field>
 
-            <Field label="Collection Time">
+            <Field label="Start Collection Time">
               <div className="relative">
                 <Clock className="absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
                 <input
@@ -254,7 +288,7 @@ export default function ScheduleFormModal({
               </div>
             </Field>
 
-            <Field label="Collection Time">
+            <Field label="End Collection Time">
               <div className="relative">
                 <Clock className="absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
                 <input

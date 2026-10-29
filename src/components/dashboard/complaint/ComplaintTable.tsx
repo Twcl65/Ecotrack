@@ -25,7 +25,7 @@ type Props = {
   onDelete: (complaint: Complaint) => void;
 };
 
-const PAGE_SIZE = 4;
+const PAGE_SIZE = 10;
 
 const inputClass =
   "w-full rounded-lg border border-gray-200 bg-white py-2 px-3 text-sm outline-none focus:border-eco-primary focus:ring-2 focus:ring-eco-primary/20";
@@ -49,7 +49,12 @@ export default function ComplaintTable({
 
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
-    return complaints.filter((c) => {
+    return [...complaints]
+      .sort(
+        (a, b) =>
+          new Date(b.filedAt).getTime() - new Date(a.filedAt).getTime()
+      )
+      .filter((c) => {
       if (statusFilter !== "all" && c.status !== statusFilter) return false;
       if (barangayFilter !== "all" && c.barangay !== barangayFilter)
         return false;
@@ -71,7 +76,7 @@ export default function ComplaintTable({
         c.barangay.toLowerCase().includes(q) ||
         c.issue.toLowerCase().includes(q)
       );
-    });
+      });
   }, [complaints, search, statusFilter, barangayFilter, fromDate, toDate]);
 
   const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));

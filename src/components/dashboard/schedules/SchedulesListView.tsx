@@ -11,7 +11,7 @@ type Props = {
   onDelete: (schedule: Schedule) => void;
 };
 
-const PAGE_SIZE = 7;
+const PAGE_SIZE = 10;
 
 export default function SchedulesListView({
   schedules,
@@ -23,8 +23,11 @@ export default function SchedulesListView({
 
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
-    if (!q) return schedules;
-    return schedules.filter(
+    const newestFirst = [...schedules].sort((a, b) =>
+      b.date.localeCompare(a.date)
+    );
+    if (!q) return newestFirst;
+    return newestFirst.filter(
       (s) =>
         s.barangay.toLowerCase().includes(q) ||
         s.dateLabel.toLowerCase().includes(q) ||

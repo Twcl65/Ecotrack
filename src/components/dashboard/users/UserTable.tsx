@@ -10,7 +10,7 @@ import {
   Search,
   Trash2,
 } from "lucide-react";
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { formatPhoneDisplay } from "@/lib/users/format";
 import { UserRoleBadge, UserStatusBadge } from "./UserBadges";
 import type { SystemUser, UserRole, UserStatus } from "@/types/user";
@@ -23,7 +23,7 @@ type Props = {
   onDelete: (user: SystemUser) => void;
 };
 
-const PAGE_SIZE = 8;
+const PAGE_SIZE = 10;
 
 const inputClass =
   "w-full rounded-lg border border-gray-200 bg-white py-2 px-3 text-sm outline-none focus:border-eco-primary focus:ring-2 focus:ring-eco-primary/20";
@@ -42,7 +42,12 @@ export default function UserTable({
 
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
-    return users.filter((u) => {
+    return [...users]
+      .sort(
+        (a, b) =>
+          new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+      )
+      .filter((u) => {
       if (roleFilter !== "all" && u.role !== roleFilter) return false;
       if (statusFilter !== "all" && u.status !== statusFilter) return false;
       if (createdDate && u.createdAt.slice(0, 10) !== createdDate) return false;
@@ -55,12 +60,8 @@ export default function UserTable({
         u.username.toLowerCase().includes(q) ||
         u.phone.includes(q)
       );
-    });
+      });
   }, [users, search, roleFilter, statusFilter, createdDate]);
-
-  useEffect(() => {
-    setPage(1);
-  }, [search, roleFilter, statusFilter, createdDate]);
 
   const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
   const currentPage = Math.min(page, totalPages);

@@ -42,6 +42,13 @@ export function formatDateLabel(dateStr: string): string {
   });
 }
 
+export function parseScheduleBarangays(value: string): string[] {
+  return value
+    .split(",")
+    .map((barangay) => barangay.trim())
+    .filter(Boolean);
+}
+
 export function mapScheduleRow(
   row: {
     id: string;
@@ -70,7 +77,7 @@ export function mapScheduleRow(
 }
 
 export function scheduleToFormValues(schedule: Schedule): {
-  barangay: string;
+  barangay: string[];
   collectionDate: string;
   routeId: string;
   timeStart: string;
@@ -79,7 +86,7 @@ export function scheduleToFormValues(schedule: Schedule): {
   status: ScheduleStatus;
 } {
   return {
-    barangay: schedule.barangay,
+    barangay: parseScheduleBarangays(schedule.barangay),
     collectionDate: schedule.date,
     routeId: schedule.routeId ?? "",
     timeStart: schedule.timeStart ? toTimeInputValue(toDbTime(schedule.timeStart) ?? "") : "",

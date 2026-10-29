@@ -33,7 +33,7 @@ type Props = {
   onDelete: (route: Route) => void;
 };
 
-const PAGE_SIZE = 6;
+const PAGE_SIZE = 10;
 
 const inputClass =
   "w-full rounded-lg border border-gray-200 bg-white py-2 pl-3 pr-8 text-sm outline-none focus:border-eco-primary focus:ring-2 focus:ring-eco-primary/20";
@@ -61,7 +61,12 @@ export default function RouteTable({
 
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
-    return routes.filter((r) => {
+    return [...routes]
+      .sort(
+        (a, b) =>
+          new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+      )
+      .filter((r) => {
       if (statusFilter !== "all" && r.status !== statusFilter) return false;
       if (driverFilter !== "all" && r.driverName !== driverFilter) return false;
       if (barangayFilter !== "all") {
@@ -76,7 +81,7 @@ export default function RouteTable({
         r.barangay.toLowerCase().includes(q) ||
         r.driverName.toLowerCase().includes(q)
       );
-    });
+      });
   }, [routes, search, statusFilter, driverFilter, barangayFilter]);
 
   const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));

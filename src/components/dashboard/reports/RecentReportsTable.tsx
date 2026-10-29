@@ -1,7 +1,7 @@
 "use client";
 
 import { ChevronLeft, ChevronRight } from "lucide-react";
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import type { ReportAnalytics, ReportFilters } from "@/types/reports";
 import { exportReportExcel, exportReportPdf } from "@/lib/reports/export";
 import type { GeneratedReport } from "@/types/reports";
@@ -13,7 +13,7 @@ type Props = {
   reportTypeFilter: ReportFilters["reportType"];
 };
 
-const PAGE_SIZE = 6;
+const PAGE_SIZE = 10;
 
 export default function RecentReportsTable({
   reports,
@@ -32,10 +32,6 @@ export default function RecentReportsTable({
         new Date(b.generatedAt).getTime() - new Date(a.generatedAt).getTime()
     );
   }, [reports, reportTypeFilter]);
-
-  useEffect(() => {
-    setPage(1);
-  }, [reportTypeFilter]);
 
   const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
   const currentPage = Math.min(page, totalPages);

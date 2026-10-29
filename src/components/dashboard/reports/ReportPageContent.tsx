@@ -148,6 +148,7 @@ export default function ReportPageContent({
       </div>
 
       <RecentReportsTable
+        key={filters.reportType}
         reports={reports}
         analytics={analytics}
         reportTypeFilter={filters.reportType}

@@ -15,7 +15,7 @@ import {
   Search,
   Trash2,
 } from "lucide-react";
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import {
   AnnouncementStatusBadge,
   AnnouncementTypeBadge,
@@ -37,7 +37,7 @@ type Props = {
   onDelete: (announcement: Announcement) => void;
 };
 
-const PAGE_SIZE = 8;
+const PAGE_SIZE = 10;
 
 const inputClass =
   "w-full rounded-lg border border-gray-200 bg-white py-2 px-3 text-sm outline-none focus:border-eco-primary focus:ring-2 focus:ring-eco-primary/20";
@@ -67,7 +67,13 @@ export default function AnnouncementTable({
 
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
-    return announcements.filter((a) => {
+    return [...announcements]
+      .sort(
+        (a, b) =>
+          new Date(b.publishedAt ?? b.created_at).getTime() -
+          new Date(a.publishedAt ?? a.created_at).getTime()
+      )
+      .filter((a) => {
       if (statusFilter !== "all" && a.status !== statusFilter) return false;
       if (typeFilter !== "all" && a.type !== typeFilter) return false;
 
@@ -81,12 +87,8 @@ export default function AnnouncementTable({
         a.subtitle.toLowerCase().includes(q) ||
         a.content.toLowerCase().includes(q)
       );
-    });
+      });
   }, [announcements, search, statusFilter, typeFilter, fromDate, toDate]);
-
-  useEffect(() => {
-    setPage(1);
-  }, [search, statusFilter, typeFilter, fromDate, toDate]);
 
   const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
   const currentPage = Math.min(page, totalPages);

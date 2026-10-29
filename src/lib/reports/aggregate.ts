@@ -8,6 +8,7 @@ import type {
   ReportTrendPoint,
 } from "@/types/reports";
 import type { Schedule } from "@/types/schedules";
+import { parseScheduleBarangays } from "@/lib/schedules/format";
 
 const WASTE_KG_PER_COLLECTION = 1334;
 
@@ -21,7 +22,10 @@ function filterSchedules(
 ): Schedule[] {
   return schedules.filter((s) => {
     if (!inRange(s.date, filters.fromDate, filters.toDate)) return false;
-    if (filters.barangay !== "all" && s.barangay !== filters.barangay)
+    if (
+      filters.barangay !== "all" &&
+      !parseScheduleBarangays(s.barangay).includes(filters.barangay)
+    )
       return false;
     return true;
   });
@@ -137,7 +141,9 @@ export function computeReportAnalytics(
   const barangayMap = new Map<string, number>();
   for (const s of filteredSchedules) {
     if (s.status === "no_collection" || s.status === "maintenance") continue;
-    barangayMap.set(s.barangay, (barangayMap.get(s.barangay) ?? 0) + 1);
+    for (const barangay of parseScheduleBarangays(s.barangay)) {
+      barangayMap.set(barangay, (barangayMap.get(barangay) ?? 0) + 1);
+    }
   }
 
   const topBarangays: ReportBarangayPoint[] = [...barangayMap.entries()]

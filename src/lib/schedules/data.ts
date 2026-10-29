@@ -5,20 +5,10 @@ import { mapScheduleRow } from "@/lib/schedules/format";
 import type { Schedule, ScheduleRouteOption } from "@/types/schedules";
 import type { Route } from "@/types/routes";
 
-/** Active barangays from DB, plus any used in existing schedules and Maintenance. */
+/** Barangays listed in Barangay Management. */
 export async function getScheduleBarangayOptions(): Promise<string[]> {
-  const [barangays, schedules] = await Promise.all([getBarangays(), getSchedules()]);
-  const names = new Set<string>();
-
-  for (const row of barangays) {
-    if (row.status === "active") names.add(row.name);
-  }
-  for (const schedule of schedules) {
-    if (schedule.barangay?.trim()) names.add(schedule.barangay.trim());
-  }
-  names.add("Maintenance");
-
-  return [...names].sort((a, b) => a.localeCompare(b));
+  const barangays = await getBarangays();
+  return barangays.map((barangay) => barangay.name);
 }
 
 export async function getScheduleRouteOptions(): Promise<ScheduleRouteOption[]> {
@@ -41,7 +31,7 @@ export async function getSchedules(): Promise<Schedule[]> {
       supabase
         .from("collection_schedules")
         .select("*")
-        .order("collection_date", { ascending: true }),
+        .order("collection_date", { ascending: false }),
       getRoutes(),
     ]);
 

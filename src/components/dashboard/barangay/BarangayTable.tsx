@@ -12,7 +12,7 @@ type Props = {
   onDelete: (barangay: Barangay) => void;
 };
 
-const PAGE_SIZE = 7;
+const PAGE_SIZE = 10;
 
 export default function BarangayTable({
   barangays,
@@ -25,8 +25,11 @@ export default function BarangayTable({
 
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
-    if (!q) return barangays;
-    return barangays.filter(
+    const newestFirst = [...barangays].sort((a, b) =>
+      (b.created_at ?? "").localeCompare(a.created_at ?? "")
+    );
+    if (!q) return newestFirst;
+    return newestFirst.filter(
       (b) =>
         b.name.toLowerCase().includes(q) ||
         b.population.toString().includes(q) ||

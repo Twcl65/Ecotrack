@@ -20,7 +20,7 @@ export type Schedule = {
 };
 
 export type ScheduleFormValues = {
-  barangay: string;
+  barangay: string[];
   collectionDate: string;
   routeId: string;
   timeStart: string;

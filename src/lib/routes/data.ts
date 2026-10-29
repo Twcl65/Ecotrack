@@ -21,8 +21,7 @@ export async function getRoutes(): Promise<Route[]> {
     const extended = await supabase
       .from("routes")
       .select(ROUTE_SELECT)
-      .order("route_code", { ascending: true, nullsFirst: false })
-      .order("name", { ascending: true });
+      .order("created_at", { ascending: false });
 
     if (!extended.error && extended.data?.length) {
       routeRows = extended.data;
@@ -30,7 +29,7 @@ export async function getRoutes(): Promise<Route[]> {
       const basic = await supabase
         .from("routes")
         .select(ROUTE_SELECT_BASIC)
-        .order("name", { ascending: true });
+        .order("created_at", { ascending: false });
       if (basic.error || !basic.data?.length) return [];
       routeRows = basic.data;
     }

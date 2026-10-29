@@ -12,17 +12,21 @@ type ActionResult =
   | { success: false; error: string };
 
 function validateForm(values: ScheduleFormValues): string | null {
-  if (!values.barangay) return "Barangay is required.";
+  if (values.barangay.length === 0) return "Select at least one barangay.";
+  if (values.barangay.includes("Maintenance") && values.barangay.length > 1) {
+    return "Maintenance cannot be combined with other barangays.";
+  }
   if (!values.collectionDate) return "Collection date is required.";
   if (!values.status) return "Status is required.";
-  if (values.barangay !== "Maintenance" && !values.driver) {
+  const isMaintenance = values.barangay.includes("Maintenance");
+  if (!isMaintenance && !values.driver) {
     return "Driver is required.";
   }
-  if (values.barangay !== "Maintenance" && (!values.timeStart || !values.timeEnd)) {
+  if (!isMaintenance && (!values.timeStart || !values.timeEnd)) {
     return "Collection time is required.";
   }
   if (
-    values.barangay !== "Maintenance" &&
+    !isMaintenance &&
     values.status !== "no_collection" &&
     !values.routeId
   ) {
@@ -33,10 +37,10 @@ function validateForm(values: ScheduleFormValues): string | null {
 
 function toInsertRow(values: ScheduleFormValues) {
   const isMaintenance =
-    values.barangay === "Maintenance" || values.status === "no_collection";
+    values.barangay.includes("Maintenance") || values.status === "no_collection";
 
   return {
-    barangay: values.barangay,
+    barangay: values.barangay.join(", "),
     collection_date: values.collectionDate,
     route_id: isMaintenance || !values.routeId ? null : values.routeId,
     time_start: isMaintenance ? null : toDbTime(values.timeStart),

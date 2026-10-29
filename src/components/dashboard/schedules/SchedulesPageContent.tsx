@@ -52,9 +52,9 @@ export default function SchedulesPageContent({
       if (idx >= 0) {
         const next = [...prev];
         next[idx] = schedule;
-        return next.sort((a, b) => a.date.localeCompare(b.date));
+        return next.sort((a, b) => b.date.localeCompare(a.date));
       }
-      return [...prev, schedule].sort((a, b) => a.date.localeCompare(b.date));
+      return [...prev, schedule].sort((a, b) => b.date.localeCompare(a.date));
     });
   }, []);
 
@@ -114,15 +114,17 @@ export default function SchedulesPageContent({
         </div>
       </div>
 
-      <ScheduleFormModal
-        mode={formMode}
-        schedule={editingSchedule}
-        open={formOpen}
-        driverOptions={driverOptions}
-        barangayOptions={barangayOptions}
-        onClose={() => setFormOpen(false)}
-        onSuccess={handleCreateOrUpdate}
-      />
+      {formOpen && (
+        <ScheduleFormModal
+          mode={formMode}
+          schedule={editingSchedule}
+          open={formOpen}
+          driverOptions={driverOptions}
+          barangayOptions={barangayOptions}
+          onClose={() => setFormOpen(false)}
+          onSuccess={handleCreateOrUpdate}
+        />
+      )}
 
       <DeleteScheduleModal
         schedule={deletingSchedule}

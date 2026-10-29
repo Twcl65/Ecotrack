@@ -25,7 +25,7 @@ export async function getBarangays(): Promise<Barangay[]> {
     const { data, error } = await supabase
       .from("barangays")
       .select("*")
-      .order("name", { ascending: true });
+      .order("created_at", { ascending: false });
 
     if (error || !data?.length) return [];
     return data.map(mapRow);

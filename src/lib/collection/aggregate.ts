@@ -9,6 +9,7 @@ import type {
 } from "@/types/collection-monitoring";
 import { BARANGAY_MAP_COORDS } from "@/types/collection-monitoring";
 import type { Schedule, ScheduleStatus } from "@/types/schedules";
+import { parseScheduleBarangays } from "@/lib/schedules/format";
 import type { Route } from "@/types/routes";
 import { DRIVER_OPTIONS } from "@/types/schedules";
 
@@ -52,7 +53,10 @@ export function filterSchedules(
 ): Schedule[] {
   return schedules.filter((s) => {
     if (s.date !== filters.date) return false;
-    if (filters.barangay !== "all" && s.barangay !== filters.barangay) return false;
+    if (
+      filters.barangay !== "all" &&
+      !parseScheduleBarangays(s.barangay).includes(filters.barangay)
+    ) return false;
     if (filters.driver !== "all" && s.driver !== filters.driver) return false;
     if (filters.status !== "all" && s.status !== filters.status) return false;
     return true;
@@ -135,15 +139,17 @@ export function computeSummary(
 export function buildMapMarkers(daySchedules: Schedule[]): CollectionMapMarker[] {
   const operational = daySchedules.filter(isOperationalSchedule);
 
-  return operational.map((s) => {
-    const coords = BARANGAY_MAP_COORDS[s.barangay] ?? { x: 50, y: 50 };
-    return {
-      barangay: s.barangay,
-      x: coords.x,
-      y: coords.y,
-      status: s.status,
-    };
-  });
+  return operational.flatMap((schedule) =>
+    parseScheduleBarangays(schedule.barangay).map((barangay) => {
+      const coords = BARANGAY_MAP_COORDS[barangay] ?? { x: 50, y: 50 };
+      return {
+        barangay,
+        x: coords.x,
+        y: coords.y,
+        status: schedule.status,
+      };
+    })
+  );
 }
 
 function findRouteForSchedule(schedule: Schedule, routes: Route[]): Route | undefined {
