@@ -5,6 +5,7 @@ import { useEffect, useState } from "react";
 import { Platform } from "react-native";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 import AppSplashScreen from "@/components/AppSplashScreen";
+import PushNotificationManager from "@/components/PushNotificationManager";
 import { AuthProvider, useAuth } from "@/context/AuthContext";
 import { ThemeProvider, useTheme } from "@/context/ThemeContext";
 
@@ -43,10 +44,10 @@ function RootNavigator() {
     const root = segments[0];
     const inAuth = root === "(auth)";
     const inApp = root === "(app)";
-    const onWelcome = !root;
+    const onWelcome = (segments as string[])[0] === "index";
 
     if (!session) {
-      if (inApp || onWelcome) {
+      if (inApp) {
         if (router.canDismiss?.()) {
           router.dismissAll();
         }
@@ -79,6 +80,7 @@ function RootNavigator() {
   return (
     <>
       <StatusBar style={isDark ? "light" : "dark"} />
+      <PushNotificationManager />
       <Stack screenOptions={{ headerShown: false, contentStyle: { backgroundColor: colors.background } }}>
         <Stack.Screen name="index" />
         <Stack.Screen name="(auth)" />

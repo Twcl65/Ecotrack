@@ -1,4 +1,5 @@
 import { ArrowRight } from "lucide-react";
+import Link from "next/link";
 import type { Announcement } from "@/types/dashboard";
 
 type Props = { announcements: Announcement[] };
@@ -23,15 +24,15 @@ export default function RecentAnnouncements({ announcements }: Props) {
         ))}
       </div>
 
-      <button
-        type="button"
+      <Link
+        href="/dashboard/announcement"
         className="mt-2 flex shrink-0 items-center gap-1.5 self-end text-[10px] font-medium text-eco-primary hover:underline"
       >
         View All Announcements
         <span className="flex h-5 w-5 items-center justify-center rounded-full border border-eco-primary/30 bg-eco-light">
           <ArrowRight className="h-3 w-3" />
         </span>
-      </button>
+      </Link>
     </div>
   );
 }

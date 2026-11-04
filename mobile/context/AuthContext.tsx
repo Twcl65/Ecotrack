@@ -16,6 +16,7 @@ import {
   type UserProfile,
 } from "@/lib/auth";
 import { isSupabaseConfigured, supabase } from "@/lib/supabase";
+import { unregisterPushToken } from "@/lib/pushNotifications";
 
 type AuthContextValue = {
   session: Session | null;
@@ -132,6 +133,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const signOut = useCallback(async () => {
     signingOutRef.current = true;
     try {
+      if (session?.user) {
+        try {
+          await unregisterPushToken(session.user.id);
+        } catch (error) {
+          console.warn(
+            "Could not unregister push notifications:",
+            error instanceof Error ? error.message : error
+          );
+        }
+      }
       const { error } = await authSignOut();
       if (error) {
         return error.message;
@@ -142,7 +153,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     } finally {
       signingOutRef.current = false;
     }
-  }, []);
+  }, [session]);
 
   const value = useMemo(
     () => ({

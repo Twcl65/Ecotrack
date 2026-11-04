@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { LogOut, Menu, User, UserCircle } from "lucide-react";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, useSyncExternalStore } from "react";
 import { usePathname } from "next/navigation";
 import DashboardNotifications from "./DashboardNotifications";
 import type { AdminNotification } from "@/types/notifications";
@@ -18,12 +18,18 @@ const TITLES: Record<string, string> = {
   "/dashboard/users": "User Management",
   "/dashboard/collection": "Collection Monitoring",
   "/dashboard/routes": "Route Management",
+  "/dashboard/profile": "Account Profile",
   "/dashboard/settings": "Settings",
 };
+
+const subscribeToHydration = () => () => {};
+const getHydratedSnapshot = () => true;
+const getServerSnapshot = () => false;
 
 type Props = {
   userName: string;
   userEmail: string;
+  avatarUrl: string | null;
   notifications: AdminNotification[];
   onMenuClick: () => void;
 };
@@ -31,11 +37,17 @@ type Props = {
 export default function DashboardHeader({
   userName,
   userEmail,
+  avatarUrl,
   notifications,
   onMenuClick,
 }: Props) {
   const pathname = usePathname();
   const [profileOpen, setProfileOpen] = useState(false);
+  const avatarHydrated = useSyncExternalStore(
+    subscribeToHydration,
+    getHydratedSnapshot,
+    getServerSnapshot
+  );
   const profileRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -77,8 +89,19 @@ export default function DashboardHeader({
             aria-expanded={profileOpen}
             aria-haspopup="menu"
           >
-            <div className="flex h-8 w-8 items-center justify-center rounded-full bg-eco-light text-eco-primary">
-              <User className="h-4 w-4" />
+            <div className="flex h-8 w-8 items-center justify-center overflow-hidden rounded-full bg-eco-light text-eco-primary">
+              {avatarHydrated && avatarUrl ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img
+                  src={avatarUrl}
+                  alt=""
+                  className="h-full w-full object-cover"
+                />
+              ) : (
+                <span className="text-xs font-semibold">
+                  {userName.trim().charAt(0).toUpperCase() || <User className="h-4 w-4" />}
+                </span>
+              )}
             </div>
             <div className="hidden text-left sm:block">
               <p className="text-xs font-semibold capitalize leading-none text-gray-900">
@@ -95,7 +118,7 @@ export default function DashboardHeader({
                 <p className="mt-0.5 text-xs text-gray-500">{userEmail}</p>
               </div>
               <Link
-                href="/dashboard/settings"
+                href="/dashboard/profile"
                 onClick={() => setProfileOpen(false)}
                 className="flex w-full items-center gap-2 px-4 py-2.5 text-left text-sm text-gray-700 hover:bg-eco-light"
               >

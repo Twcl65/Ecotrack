@@ -1,7 +1,8 @@
 "use client";
 
 import { Cell, Pie, PieChart, ResponsiveContainer } from "recharts";
-import { Clock, Leaf, MapPin, Truck } from "lucide-react";
+import { Clock, Leaf, MapPin, Truck, X } from "lucide-react";
+import { useEffect } from "react";
 import type {
   CollectionActivity,
   CollectionProgressSlice,
@@ -11,6 +12,9 @@ type Props = {
   slices: CollectionProgressSlice[];
   overallPercent: number;
   activities: CollectionActivity[];
+  activityDialogOpen: boolean;
+  onOpenActivityDialog: () => void;
+  onCloseActivityDialog: () => void;
 };
 
 const TONE_ICON = {
@@ -25,12 +29,53 @@ const TONE_CLASS = {
   warning: "bg-amber-100 text-amber-700",
 };
 
+function ActivityItem({
+  item,
+  showDate = false,
+}: {
+  item: CollectionActivity;
+  showDate?: boolean;
+}) {
+  const Icon = TONE_ICON[item.tone];
+
+  return (
+    <li className="flex gap-2">
+      <div
+        className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-full ${TONE_CLASS[item.tone]}`}
+      >
+        <Icon className="h-3 w-3" />
+      </div>
+      <div className="min-w-0 flex-1">
+        <p className="text-[11px] leading-snug text-gray-700">{item.message}</p>
+        <p className="mt-0.5 text-[10px] text-gray-400">
+          {showDate ? `${item.dateLabel} · ` : ""}
+          {item.timeLabel}
+        </p>
+      </div>
+    </li>
+  );
+}
+
 export default function CollectionProgressPanel({
   slices,
   overallPercent,
   activities,
+  activityDialogOpen,
+  onOpenActivityDialog,
+  onCloseActivityDialog,
 }: Props) {
   const chartData = slices.filter((s) => s.count > 0);
+
+  useEffect(() => {
+    if (!activityDialogOpen) return;
+
+    function closeOnEscape(event: KeyboardEvent) {
+      if (event.key === "Escape") onCloseActivityDialog();
+    }
+
+    document.addEventListener("keydown", closeOnEscape);
+    return () => document.removeEventListener("keydown", closeOnEscape);
+  }, [activityDialogOpen, onCloseActivityDialog]);
 
   return (
     <div className="flex h-full min-h-0 flex-col gap-2 overflow-hidden">
@@ -97,7 +142,11 @@ export default function CollectionProgressPanel({
       <div className="dashboard-card flex min-h-0 flex-1 flex-col overflow-hidden p-3">
         <div className="mb-2 flex shrink-0 items-center justify-between">
           <h3 className="text-sm font-bold text-gray-900">Recent Activity</h3>
-          <button type="button" className="text-[11px] font-semibold text-eco-primary">
+          <button
+            type="button"
+            onClick={onOpenActivityDialog}
+            className="text-[11px] font-semibold text-eco-primary hover:underline"
+          >
             View All
           </button>
         </div>
@@ -105,25 +154,60 @@ export default function CollectionProgressPanel({
           {activities.length === 0 ? (
             <li className="text-xs text-gray-500">No recent activity.</li>
           ) : (
-            activities.map((item) => {
-              const Icon = TONE_ICON[item.tone];
-              return (
-                <li key={item.id} className="flex gap-2">
-                  <div
-                    className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-full ${TONE_CLASS[item.tone]}`}
-                  >
-                    <Icon className="h-3 w-3" />
-                  </div>
-                  <div className="min-w-0 flex-1">
-                    <p className="text-[11px] leading-snug text-gray-700">{item.message}</p>
-                    <p className="mt-0.5 text-[10px] text-gray-400">{item.timeLabel}</p>
-                  </div>
-                </li>
-              );
-            })
+            activities.slice(0, 5).map((item) => (
+              <ActivityItem key={item.id} item={item} />
+            ))
           )}
         </ul>
       </div>
+
+      {activityDialogOpen && (
+        <div className="fixed inset-0 z-[60] flex items-center justify-center p-4">
+          <button
+            type="button"
+            className="absolute inset-0 bg-black/40"
+            onClick={onCloseActivityDialog}
+            aria-label="Close activity dialog"
+          />
+          <section
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="collection-activity-title"
+            className="relative z-10 flex max-h-[85vh] w-full max-w-lg flex-col overflow-hidden rounded-xl bg-white shadow-xl"
+          >
+            <header className="flex items-center justify-between border-b border-gray-100 px-5 py-4">
+              <div>
+                <h2
+                  id="collection-activity-title"
+                  className="text-lg font-bold text-gray-900"
+                >
+                  All Collection Activity
+                </h2>
+                <p className="mt-0.5 text-xs text-gray-500">
+                  {activities.length} {activities.length === 1 ? "activity" : "activities"}
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={onCloseActivityDialog}
+                className="rounded-lg p-1 text-gray-400 hover:bg-gray-100"
+                aria-label="Close"
+              >
+                <X className="h-5 w-5" />
+              </button>
+            </header>
+            <ul className="min-h-0 space-y-3 overflow-y-auto p-5">
+              {activities.length === 0 ? (
+                <li className="text-sm text-gray-500">No activity to show.</li>
+              ) : (
+                activities.map((item) => (
+                  <ActivityItem key={item.id} item={item} showDate />
+                ))
+              )}
+            </ul>
+          </section>
+        </div>
+      )}
     </div>
   );
 }

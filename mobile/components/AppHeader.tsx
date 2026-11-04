@@ -5,6 +5,7 @@ import { Pressable, StyleSheet, Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { HeaderLogo } from "@/components/Logo";
 import { useTheme } from "@/context/ThemeContext";
+import { useUnreadCounts } from "@/hooks/useUnreadCounts";
 import { fontSize, spacing, type ThemeColors } from "@/constants/theme";
 
 type Props = {
@@ -53,19 +54,43 @@ export default function AppHeader({
 
         <View style={[styles.side, styles.sideRight]}>
           {!showBack && bellVisible ? (
-            <Pressable
-              onPress={() => router.push(notifRoute as never)}
-              style={styles.iconBtn}
-              accessibilityLabel="Notifications"
-            >
-              <Ionicons name="notifications-outline" size={22} color={colors.headerText} />
-            </Pressable>
+            <NotificationBell module={module} route={notifRoute} />
           ) : (
             <View style={styles.iconBtn} />
           )}
         </View>
       </View>
     </View>
+  );
+}
+
+function NotificationBell({
+  module,
+  route,
+}: {
+  module: "resident" | "driver";
+  route: string;
+}) {
+  const router = useRouter();
+  const { colors } = useTheme();
+  const styles = useMemo(() => createStyles(colors), [colors]);
+  const unreadCounts = useUnreadCounts(module);
+  const unreadTotal = unreadCounts.notifications;
+
+  return (
+    <Pressable
+      onPress={() => router.push(route as never)}
+      style={[styles.iconBtn, styles.bellButton]}
+      accessibilityRole="button"
+      accessibilityLabel={`Notifications${unreadTotal ? `, ${unreadTotal} unread` : ""}`}
+    >
+      <Ionicons name="notifications-outline" size={22} color={colors.headerText} />
+      {unreadTotal > 0 ? (
+        <View style={styles.badge}>
+          <Text style={styles.badgeText}>{unreadTotal > 99 ? "99+" : unreadTotal}</Text>
+        </View>
+      ) : null}
+    </Pressable>
   );
 }
 
@@ -92,6 +117,29 @@ function createStyles(colors: ThemeColors) {
       height: 36,
       alignItems: "center",
       justifyContent: "center",
+    },
+    bellButton: {
+      position: "relative",
+    },
+    badge: {
+      position: "absolute",
+      top: -1,
+      right: -3,
+      minWidth: 17,
+      height: 17,
+      paddingHorizontal: 4,
+      borderRadius: 9,
+      alignItems: "center",
+      justifyContent: "center",
+      backgroundColor: "#dc2626",
+      borderWidth: 1,
+      borderColor: colors.primaryDark,
+    },
+    badgeText: {
+      color: colors.white,
+      fontSize: 9,
+      fontWeight: "800",
+      lineHeight: 12,
     },
     center: {
       flex: 1,

@@ -57,8 +57,7 @@ export default function LoginScreen() {
       behavior={Platform.OS === "ios" ? "padding" : undefined}
     >
       <View style={[styles.header, { paddingTop: insets.top + spacing.md }]}>
-        <Logo variant="light" size="sm" />
-        <Text style={styles.location}>Jasaan, Misamis Oriental</Text>
+        <Logo variant="light" size="sm" showTagline={false} />
       </View>
 
       <ScrollView
@@ -124,12 +123,7 @@ const styles = StyleSheet.create({
     backgroundColor: colors.primary,
     paddingHorizontal: spacing.lg,
     paddingBottom: spacing.lg,
-    alignItems: "center",
-    gap: spacing.sm,
-  },
-  location: {
-    color: "rgba(255,255,255,0.9)",
-    fontSize: fontSize.sm,
+    alignItems: "flex-start",
   },
   body: { flex: 1 },
   cardWrap: {

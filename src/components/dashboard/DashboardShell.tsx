@@ -10,6 +10,7 @@ type DashboardShellProps = {
   children: React.ReactNode;
   userName: string;
   userEmail: string;
+  avatarUrl: string | null;
   notifications: AdminNotification[];
 };
 
@@ -17,6 +18,7 @@ export default function DashboardShell({
   children,
   userName,
   userEmail,
+  avatarUrl,
   notifications,
 }: DashboardShellProps) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -37,6 +39,7 @@ export default function DashboardShell({
         <DashboardHeader
           userName={userName}
           userEmail={userEmail}
+          avatarUrl={avatarUrl}
           notifications={notifications}
           onMenuClick={() => setSidebarOpen(true)}
         />

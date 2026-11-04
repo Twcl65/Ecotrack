@@ -28,6 +28,16 @@ const illustrationMap = {
 } as const;
 
 export default function FeatureCards({ features }: FeatureCardsProps) {
+  const seenFeatureTypes = new Set<FeatureCard["icon_type"]>();
+  const uniqueFeatures = features.filter((feature) => {
+    if (seenFeatureTypes.has(feature.icon_type)) {
+      return false;
+    }
+
+    seenFeatureTypes.add(feature.icon_type);
+    return true;
+  });
+
   return (
     <section id="services" className="bg-gray-50/80 py-16">
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
@@ -41,7 +51,7 @@ export default function FeatureCards({ features }: FeatureCardsProps) {
         </div>
 
         <div className="grid gap-6 md:grid-cols-3">
-          {features.map((feature) => {
+          {uniqueFeatures.map((feature) => {
             const Icon = iconMap[feature.icon_type] ?? Map;
             const illustration =
               illustrationMap[feature.icon_type] ?? illustrationMap.route;

@@ -5,14 +5,12 @@ import CollectionMonitoringFilters from "./CollectionMonitoringFilters";
 import CollectionMonitoringKpiCards from "./CollectionMonitoringKpiCards";
 import CollectionProgressPanel from "./CollectionProgressPanel";
 import CollectionSchedulePanel from "./CollectionSchedulePanel";
-import CollectionSummaryBar from "./CollectionSummaryBar";
 import CollectionTrackingMap from "./CollectionTrackingMap";
 import {
   buildRecentActivity,
   buildRouteOverlays,
   computeMonitoringKpis,
   computeProgress,
-  computeSummary,
   filterSchedules,
 } from "@/lib/collection/aggregate";
 import { todayIso } from "@/lib/date";
@@ -26,11 +24,11 @@ export default function CollectionMonitoringPageContent({
   schedules,
   routes,
   routesCount,
-  wasteCollectedKg,
   barangayOptions,
   driverOptions,
 }: Props) {
   const [tab, setTab] = useState<Tab>("today");
+  const [activityDialogOpen, setActivityDialogOpen] = useState(false);
   const [date, setDate] = useState(todayIso);
   const [barangay, setBarangay] = useState("all");
   const [driver, setDriver] = useState("all");
@@ -49,11 +47,6 @@ export default function CollectionMonitoringPageContent({
   const { slices, overallPercent } = useMemo(
     () => computeProgress(filtered),
     [filtered]
-  );
-
-  const summary = useMemo(
-    () => computeSummary(filtered, wasteCollectedKg),
-    [filtered, wasteCollectedKg]
   );
 
   const activities = useMemo(
@@ -91,15 +84,19 @@ export default function CollectionMonitoringPageContent({
           schedules={filtered}
           allSchedules={schedules}
         />
-        <CollectionTrackingMap overlays={routeOverlays} />
+        <CollectionTrackingMap
+          overlays={routeOverlays}
+          hideLegend={activityDialogOpen}
+        />
         <CollectionProgressPanel
           slices={slices}
           overallPercent={overallPercent}
           activities={activities}
+          activityDialogOpen={activityDialogOpen}
+          onOpenActivityDialog={() => setActivityDialogOpen(true)}
+          onCloseActivityDialog={() => setActivityDialogOpen(false)}
         />
       </div>
-
-      <CollectionSummaryBar summary={summary} />
     </div>
   );
 }

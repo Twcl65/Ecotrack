@@ -4,11 +4,13 @@ import * as Location from "expo-location";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   ActivityIndicator,
+  Linking,
   Pressable,
   ScrollView,
   StyleSheet,
   Text,
   View,
+  useWindowDimensions,
 } from "react-native";
 import AppHeader from "@/components/AppHeader";
 import RouteMapView from "@/components/RouteMapView";
@@ -24,6 +26,7 @@ import {
 import {
   formatRouteName,
   fetchRouteForBarangay,
+  fetchRouteById,
   getRouteDirection,
   getNextStopIndex,
   getStopProgress,
@@ -35,66 +38,99 @@ import {
   type RouteStopItem,
 } from "@/lib/data/routes";
 import { fetchSchedules, type ScheduleItem } from "@/lib/data/schedules";
-import { publishDriverLocation, stopDriverLocationTracking } from "@/lib/data/tracking";
+import {
+  publishDriverLocation,
+  stopDriverLocationTracking,
+  type DriverLocation,
+} from "@/lib/data/tracking";
+import { getCurrentDriverLocation } from "@/lib/location";
 import { todayIso } from "@/lib/date";
 import { fontSize, radius, spacing, type ThemeColors } from "@/constants/theme";
 
 export default function RouteNavScreen() {
   const { profile } = useAuth();
   const { colors } = useTheme();
+  const { height: windowHeight } = useWindowDimensions();
   const styles = useMemo(() => createStyles(colors), [colors]);
   const driverName = profile?.fullName ?? "Driver";
-  const { scheduleId: scheduleIdParam } = useLocalSearchParams<{ scheduleId?: string }>();
+  const {
+    scheduleId: scheduleIdParam,
+    history: historyParam,
+  } = useLocalSearchParams<{ scheduleId?: string | string[]; history?: string }>();
+  const requestedScheduleId = Array.isArray(scheduleIdParam)
+    ? scheduleIdParam[0]
+    : scheduleIdParam;
+  const historyMode = historyParam === "true";
 
   const [route, setRoute] = useState<DriverRoute | null>(null);
   const [schedule, setSchedule] = useState<ScheduleItem | null>(null);
+  const [liveLocation, setLiveLocation] = useState<DriverLocation | null>(null);
   const [started, setStarted] = useState(false);
   const [finished, setFinished] = useState(false);
+  const [loadingRoute, setLoadingRoute] = useState(true);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [gpsStatus, setGpsStatus] = useState<string | null>(null);
+  const [routeLoadError, setRouteLoadError] = useState<string | null>(null);
+  const [gpsRetryToken, setGpsRetryToken] = useState(0);
   const routeRef = useRef<DriverRoute | null>(null);
   const previousGpsPosition = useRef<Location.LocationObjectCoords | null>(null);
   const processingStop = useRef(false);
 
   const load = useCallback(async () => {
-    const schedules = await fetchSchedules();
-    const assigned = filterDriverSchedules(schedules, driverName);
-    const today = getTodaySchedules(schedules, driverName);
-    const active =
-      (scheduleIdParam
-        ? assigned.find((s) => s.id === scheduleIdParam)
-        : null) ??
-      getActiveSchedule(today) ??
-      getNextUpcomingSchedule(schedules, driverName);
+    setLoadingRoute(true);
+    setRouteLoadError(null);
+    try {
+      const schedules = await fetchSchedules(true);
+      const assigned = filterDriverSchedules(schedules, driverName);
+      const today = getTodaySchedules(schedules, driverName);
+      const active = requestedScheduleId
+        ? assigned.find((s) => s.id === requestedScheduleId) ?? null
+        : getActiveSchedule(today) ?? getNextUpcomingSchedule(schedules, driverName);
 
-    setSchedule(active ?? null);
+      setSchedule(active ?? null);
 
-    if (!active) {
+      if (!active) {
+        setRoute(null);
+        routeRef.current = null;
+        setStarted(false);
+        setFinished(false);
+        return;
+      }
+
+      const data =
+        (active.routeId
+          ? await fetchRouteById(active.routeId, driverName)
+          : null) ??
+        (await fetchRouteForBarangay(active.barangay, driverName));
+      setRoute(data);
+      routeRef.current = data;
+
+      if (data) {
+        const progress = getStopProgress(data.stops);
+        const done = progress.total > 0 && progress.collected === progress.total;
+        setFinished(done || active.status === "completed" || historyMode);
+        setStarted(
+          !historyMode &&
+            (active.status === "ongoing" || (progress.collected > 0 && !done))
+        );
+      } else {
+        setStarted(false);
+        setFinished(active.status === "completed" || historyMode);
+      }
+    } catch (loadError) {
       setRoute(null);
       routeRef.current = null;
-      setStarted(false);
-      setFinished(false);
-      return;
-    }
-
-    const data = await fetchRouteForBarangay(active.barangay, driverName);
-    setRoute(data);
-    routeRef.current = data;
-
-    if (data) {
-      const progress = getStopProgress(data.stops);
-      const done = progress.total > 0 && progress.collected === progress.total;
-      setFinished(done || active.status === "completed");
-      setStarted(
-        active.status === "ongoing" ||
-          (progress.collected > 0 && !done)
+      setSchedule(null);
+      setRouteLoadError(
+        loadError instanceof Error
+          ? loadError.message
+          : "Could not load this route."
       );
-    } else {
-      setStarted(false);
-      setFinished(active.status === "completed");
+    } finally {
+      setLoadingRoute(false);
     }
-  }, [driverName, scheduleIdParam]);
+  }, [driverName, historyMode, requestedScheduleId]);
 
   useFocusEffect(
     useCallback(() => {
@@ -103,7 +139,7 @@ export default function RouteNavScreen() {
   );
 
   useEffect(() => {
-    if (!schedule?.id || !profile?.id || !started || finished) return;
+    if (!schedule?.id || !profile?.id || !started || finished || historyMode) return;
     const scheduleId = schedule.id;
     const driverId = profile.id;
     let active = true;
@@ -178,19 +214,41 @@ export default function RouteNavScreen() {
 
     async function beginGpsTracking() {
       try {
-        const permission = await Location.requestForegroundPermissionsAsync();
-        if (!permission.granted) {
-          if (active) setGpsStatus("Location permission is disabled. Enable it to share your live location.");
+        if (active) setGpsStatus("Requesting location permission and GPS...");
+        const ready = await getCurrentDriverLocation();
+        if ("error" in ready) {
+          if (active) setGpsStatus(ready.error);
           return;
         }
 
-        const servicesEnabled = await Location.hasServicesEnabledAsync();
-        if (!servicesEnabled) {
-          if (active) setGpsStatus("Turn on device location to share live tracking.");
-          return;
+        const position = ready.location;
+        setLiveLocation({
+          scheduleId,
+          driverId,
+          driverName,
+          latitude: position.coords.latitude,
+          longitude: position.coords.longitude,
+          accuracy: position.coords.accuracy,
+          updatedAt: new Date(position.timestamp).toISOString(),
+          isTracking: true,
+        });
+        const initialPublishError = await publishDriverLocation({
+          scheduleId,
+          driverId,
+          driverName,
+          latitude: position.coords.latitude,
+          longitude: position.coords.longitude,
+          accuracy: position.coords.accuracy,
+          isTracking: true,
+        });
+        if (active) {
+          setGpsStatus(
+            initialPublishError
+              ? `GPS is active, but location could not be shared: ${initialPublishError}`
+              : "Live GPS tracking is on."
+          );
         }
 
-        if (active) setGpsStatus("Getting GPS location...");
         subscription = await Location.watchPositionAsync(
           {
             accuracy: Location.Accuracy.High,
@@ -200,6 +258,17 @@ export default function RouteNavScreen() {
           async (position) => {
             if (!active) return;
             try {
+              const updatedLocation: DriverLocation = {
+                scheduleId,
+                driverId,
+                driverName,
+                latitude: position.coords.latitude,
+                longitude: position.coords.longitude,
+                accuracy: position.coords.accuracy,
+                updatedAt: new Date(position.timestamp).toISOString(),
+                isTracking: true,
+              };
+              setLiveLocation(updatedLocation);
               const publishError = await publishDriverLocation({
                 scheduleId,
                 driverId,
@@ -244,10 +313,21 @@ export default function RouteNavScreen() {
       active = false;
       subscription?.remove();
     };
-  }, [driverName, finished, load, profile?.id, schedule?.id, started]);
+  }, [
+    driverName,
+    finished,
+    gpsRetryToken,
+    historyMode,
+    load,
+    profile?.id,
+    schedule?.id,
+    started,
+  ]);
 
   const stops = route?.stops ?? [];
-  const progress = getStopProgress(stops);
+  const progress = historyMode
+    ? { collected: stops.length, total: stops.length, percent: stops.length > 0 ? 100 : 0 }
+    : getStopProgress(stops);
   const nextIndex = getNextStopIndex(stops);
   const allCollected = stops.length > 0 && nextIndex === -1;
   const canStartCollection =
@@ -257,26 +337,46 @@ export default function RouteNavScreen() {
 
   async function handleStartCollection() {
     if (!schedule) return;
+    if (!profile?.id) {
+      setError("Could not identify your driver account. Sign in again and try once more.");
+      return;
+    }
+
     setBusy(true);
     setError(null);
     try {
-      const permission = await Location.requestForegroundPermissionsAsync();
-      if (!permission.granted) {
-        setError("Allow location access to start a tracked collection.");
+      const ready = await getCurrentDriverLocation();
+      if ("error" in ready) {
+        setError(ready.error);
         return;
       }
-      const servicesEnabled = await Location.hasServicesEnabledAsync();
-      if (!servicesEnabled) {
-        setError("Turn on device location to start a tracked collection.");
-        return;
-      }
+
       const err = await startSchedule(schedule.id);
       if (err) {
         setError(err);
         return;
       }
+
+      const position = ready.location;
+      const initialLocation: DriverLocation = {
+        scheduleId: schedule.id,
+        driverId: profile.id,
+        driverName,
+        latitude: position.coords.latitude,
+        longitude: position.coords.longitude,
+        accuracy: position.coords.accuracy,
+        updatedAt: new Date(position.timestamp).toISOString(),
+        isTracking: true,
+      };
+      setLiveLocation(initialLocation);
       setSchedule({ ...schedule, status: "ongoing" });
       setStarted(true);
+      setGpsStatus("Collection started. Starting live GPS tracking...");
+
+      const publishError = await publishDriverLocation(initialLocation);
+      if (publishError) {
+        setGpsStatus(`Collection started, but GPS location could not be shared: ${publishError}`);
+      }
     } catch (startError) {
       setError(
         startError instanceof Error ? startError.message : "Could not start collection."
@@ -308,9 +408,44 @@ export default function RouteNavScreen() {
               <Text style={styles.scheduleDate}>{schedule.dateLabel}</Text>
             </View>
 
-            <RouteMapView stops={stops} height={260} />
+            <RouteMapView
+              stops={stops}
+              height={Math.min(340, Math.max(220, windowHeight * 0.34))}
+              driverLocation={liveLocation}
+            />
             {started && gpsStatus ? (
-              <Text style={styles.gpsStatus}>{gpsStatus}</Text>
+              <View style={styles.gpsStatusWrap}>
+                <Text style={styles.gpsStatus}>{gpsStatus}</Text>
+                {!gpsStatus.startsWith("Live GPS tracking is on") &&
+                !gpsStatus.startsWith("Passed ") ? (
+                  <View style={styles.gpsActions}>
+                    <Pressable
+                      onPress={() => setGpsRetryToken((token) => token + 1)}
+                      disabled={busy}
+                      hitSlop={8}
+                    >
+                      <Text style={styles.retryGps}>Retry GPS</Text>
+                    </Pressable>
+                    {gpsStatus.includes("phone settings") ||
+                    gpsStatus.includes("Turn on device location") ? (
+                      <Pressable
+                        onPress={() => {
+                          void Linking.openSettings().catch((settingsError: unknown) => {
+                            setError(
+                              settingsError instanceof Error
+                                ? settingsError.message
+                                : "Could not open phone settings."
+                            );
+                          });
+                        }}
+                        hitSlop={8}
+                      >
+                        <Text style={styles.retryGps}>Open Location Settings</Text>
+                      </Pressable>
+                    ) : null}
+                  </View>
+                ) : null}
+              </View>
             ) : null}
 
             <Text style={styles.estTitle}>Estimated Time</Text>
@@ -335,7 +470,7 @@ export default function RouteNavScreen() {
                     ))}
                   </View>
                 ) : null}
-                {canStartCollection ? (
+                {canStartCollection && !historyMode ? (
                   <Pressable
                     style={[styles.primaryBtn, busy && styles.btnDisabled]}
                     onPress={handleStartCollection}
@@ -367,7 +502,7 @@ export default function RouteNavScreen() {
 
                 <Text style={styles.sectionTitle}>Route Stops</Text>
                 {stops.map((stop, index) => {
-                  const collected = isStopCollected(stop.status);
+                  const collected = historyMode || isStopCollected(stop.status);
                   const isNext = index === nextIndex;
 
                   return (
@@ -420,6 +555,10 @@ export default function RouteNavScreen() {
 
             {error ? <Text style={styles.error}>{error}</Text> : null}
           </>
+        ) : loadingRoute ? (
+          <ActivityIndicator color={colors.primary} style={styles.loading} />
+        ) : routeLoadError ? (
+          <Text style={styles.error}>{routeLoadError}</Text>
         ) : (
           <Text style={styles.empty}>No collection scheduled for this route.</Text>
         )}
@@ -432,6 +571,7 @@ function createStyles(colors: ThemeColors) {
   return StyleSheet.create({
     screen: { flex: 1, backgroundColor: colors.background },
     content: { padding: spacing.md, gap: spacing.md, paddingBottom: spacing.xl },
+    loading: { marginTop: spacing.xl },
     scheduleCard: {
       backgroundColor: colors.surface,
       borderRadius: radius.md,
@@ -643,6 +783,22 @@ function createStyles(colors: ThemeColors) {
       color: colors.textMuted,
       fontSize: fontSize.xs,
       textAlign: "center",
+    },
+    gpsStatusWrap: {
+      alignItems: "center",
+      gap: spacing.xs,
+    },
+    retryGps: {
+      color: colors.primary,
+      fontSize: fontSize.xs,
+      fontWeight: "700",
+      padding: spacing.xs,
+    },
+    gpsActions: {
+      flexDirection: "row",
+      flexWrap: "wrap",
+      justifyContent: "center",
+      gap: spacing.sm,
     },
     empty: {
       textAlign: "center",

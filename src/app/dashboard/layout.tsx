@@ -19,7 +19,7 @@ export default async function DashboardLayout({
 
   const { data: profile } = await supabase
     .from("profiles")
-    .select("full_name, username")
+    .select("full_name, username, email, avatar_url")
     .eq("id", user.id)
     .single();
 
@@ -28,7 +28,7 @@ export default async function DashboardLayout({
     profile?.username ||
     user.email?.split("@")[0] ||
     "Admin";
-  const userEmail = user.email ?? "admin@gmail.com";
+  const userEmail = profile?.email || user.email || "admin@gmail.com";
 
   const notifications = await getAdminNotifications();
 
@@ -36,6 +36,7 @@ export default async function DashboardLayout({
     <DashboardShell
       userName={userName}
       userEmail={userEmail}
+      avatarUrl={profile?.avatar_url ?? null}
       notifications={notifications}
     >
       {children}

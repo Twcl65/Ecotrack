@@ -16,20 +16,12 @@ export type CollectionProgressSlice = {
   color: string;
 };
 
-export type CollectionSummary = {
-  total: number;
-  completed: number;
-  inProgress: number;
-  pending: number;
-  cancelled: number;
-  wasteKg: number;
-};
-
 export type CollectionActivity = {
   id: string;
   tone: "success" | "info" | "warning";
   message: string;
   timeLabel: string;
+  dateLabel: string;
 };
 
 export type CollectionMapMarker = {

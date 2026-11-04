@@ -5,7 +5,6 @@ import type {
   CollectionMonitoringKpis,
   CollectionProgressSlice,
   CollectionRouteOverlay,
-  CollectionSummary,
 } from "@/types/collection-monitoring";
 import { BARANGAY_MAP_COORDS } from "@/types/collection-monitoring";
 import type { Schedule, ScheduleStatus } from "@/types/schedules";
@@ -109,33 +108,6 @@ export function computeProgress(
   return { slices, overallPercent };
 }
 
-export function computeSummary(
-  daySchedules: Schedule[],
-  wasteCollectedKg: number
-): CollectionSummary {
-  const operational = daySchedules.filter(isOperationalSchedule);
-  const completed = operational.filter((s) => s.status === "completed").length;
-  const inProgress = operational.filter((s) => s.status === "ongoing").length;
-  const pending = operational.filter((s) => s.status === "pending").length;
-  const cancelled = operational.filter((s) => s.status === "canceled").length;
-
-  const wasteKg =
-    completed > 0
-      ? Math.round(
-          (wasteCollectedKg / Math.max(operational.length, 1)) * completed
-        )
-      : 0;
-
-  return {
-    total: operational.length,
-    completed,
-    inProgress,
-    pending,
-    cancelled,
-    wasteKg,
-  };
-}
-
 export function buildMapMarkers(daySchedules: Schedule[]): CollectionMapMarker[] {
   const operational = daySchedules.filter(isOperationalSchedule);
 
@@ -211,33 +183,37 @@ export function buildRecentActivity(
   date: string
 ): CollectionActivity[] {
   const items: CollectionActivity[] = [];
-  const selected = schedules.find((s) => s.date === date && isOperationalSchedule(s));
+  const selected = schedules.filter(
+    (s) => s.date === date && isOperationalSchedule(s)
+  );
   const tomorrow = addDaysIso(date, 1);
-  const tomorrowSchedule = schedules.find(
+  const tomorrowSchedules = schedules.filter(
     (s) => s.date === tomorrow && isOperationalSchedule(s)
   );
 
-  if (selected) {
-    if (selected.status === "ongoing") {
+  for (const schedule of selected) {
+    if (schedule.status === "ongoing") {
       items.push({
-        id: `${selected.id}-route`,
+        id: `${schedule.id}-route`,
         tone: "info",
-        message: `Driver ${selected.driver ?? "assigned"} is on the way — To ${selected.barangay}`,
-        timeLabel: formatActivityTime(selected.timeStart ?? "10:05 AM"),
+        message: `Driver ${schedule.driver ?? "assigned"} is on the way — To ${schedule.barangay}`,
+        timeLabel: formatActivityTime(schedule.timeStart ?? "10:05 AM"),
+        dateLabel: schedule.dateLabel,
       });
     }
     items.push({
-      id: `${selected.id}-scheduled`,
+      id: `${schedule.id}-scheduled`,
       tone: "success",
-      message: `Collection scheduled in ${selected.barangay} — Residual Waste Collection`,
-      timeLabel: formatActivityTime(selected.timeStart ?? "10:15 AM"),
+      message: `Collection scheduled in ${schedule.barangay} — Residual Waste Collection`,
+      timeLabel: formatActivityTime(schedule.timeStart ?? "10:15 AM"),
+      dateLabel: schedule.dateLabel,
     });
   }
 
-  if (tomorrowSchedule) {
+  for (const schedule of tomorrowSchedules) {
     const d = new Date(`${tomorrow}T12:00:00`);
     items.push({
-      id: `${tomorrowSchedule.id}-tomorrow`,
+      id: `${schedule.id}-tomorrow`,
       tone: "warning",
       message: `Collection scheduled for tomorrow — ${d.toLocaleDateString("en-US", {
         month: "long",
@@ -245,25 +221,25 @@ export function buildRecentActivity(
         year: "numeric",
       })} (${d.toLocaleDateString("en-US", { weekday: "long" })})`,
       timeLabel: "09:30 AM",
+      dateLabel: schedule.dateLabel,
     });
   }
 
   const recentCompleted = schedules
     .filter((s) => s.status === "completed" && s.date <= date)
     .sort((a, b) => b.date.localeCompare(a.date))
-    .slice(0, 2);
 
   for (const s of recentCompleted) {
-    if (items.some((i) => i.id === s.id)) continue;
     items.push({
       id: s.id,
       tone: "success",
       message: `Collection completed in ${s.barangay}`,
       timeLabel: formatActivityTime(s.timeEnd ?? s.timeStart ?? "08:00 AM"),
+      dateLabel: s.dateLabel,
     });
   }
 
-  return items.slice(0, 5);
+  return items;
 }
 
 function formatActivityTime(time: string): string {

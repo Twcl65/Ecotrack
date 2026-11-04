@@ -6,6 +6,7 @@ export default function DriverLayout() {
       <Stack.Screen name="(tabs)" />
       <Stack.Screen name="schedule-detail" />
       <Stack.Screen name="route-nav" />
+      <Stack.Screen name="route-history" />
       <Stack.Screen name="announcements" />
       <Stack.Screen name="announcement-detail" />
       <Stack.Screen name="notification-detail" />

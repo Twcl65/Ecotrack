@@ -1,7 +1,14 @@
 import { Ionicons } from "@expo/vector-icons";
 import { useFocusEffect, useRouter } from "expo-router";
 import { useCallback, useMemo, useState } from "react";
-import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
+import {
+  ActivityIndicator,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  Text,
+  View,
+} from "react-native";
 import AppHeader from "@/components/AppHeader";
 import CollectionStatusBadge from "@/components/CollectionStatusBadge";
 import { useAuth } from "@/context/AuthContext";
@@ -32,24 +39,41 @@ export default function DriverRouteScreen() {
   const [route, setRoute] = useState<DriverRoute | null>(null);
   const [activeSchedule, setActiveSchedule] = useState<ScheduleItem | null>(null);
   const [completedToday, setCompletedToday] = useState<ScheduleItem[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
 
   const load = useCallback(async () => {
-    const schedules = await fetchSchedules();
-    const today = getTodaySchedules(schedules, driverName);
-    const active =
-      getActiveSchedule(today) ?? getNextUpcomingSchedule(schedules, driverName);
-    const completed = getCompletedTodaySchedules(today);
+    setLoading(true);
+    setLoadError(null);
+    try {
+      const schedules = await fetchSchedules(true);
+      const today = getTodaySchedules(schedules, driverName);
+      const active =
+        getActiveSchedule(today) ?? getNextUpcomingSchedule(schedules, driverName);
+      const completed = getCompletedTodaySchedules(today);
 
-    setActiveSchedule(active);
-    setCompletedToday(completed);
+      setActiveSchedule(active);
+      setCompletedToday(completed);
 
-    if (active) {
-      setRoute(await fetchRouteForBarangay(active.barangay, driverName));
-    } else if (completed.length > 0) {
-      const last = completed[completed.length - 1];
-      setRoute(await fetchRouteForBarangay(last.barangay, driverName));
-    } else {
+      if (active) {
+        setRoute(await fetchRouteForBarangay(active.barangay, driverName));
+      } else if (completed.length > 0) {
+        const last = completed[completed.length - 1];
+        setRoute(await fetchRouteForBarangay(last.barangay, driverName));
+      } else {
+        setRoute(null);
+      }
+    } catch (loadError) {
       setRoute(null);
+      setActiveSchedule(null);
+      setCompletedToday([]);
+      setLoadError(
+        loadError instanceof Error
+          ? loadError.message
+          : "Could not load your route."
+      );
+    } finally {
+      setLoading(false);
     }
   }, [driverName]);
 
@@ -71,7 +95,28 @@ export default function DriverRouteScreen() {
     <View style={styles.screen}>
       <AppHeader title="My Route" module="driver" />
       <ScrollView contentContainerStyle={styles.content}>
-        {completedToday.map((schedule) => (
+        <Pressable
+          style={styles.historyBtn}
+          onPress={() => router.push("/(app)/(driver)/route-history" as never)}
+        >
+          <Ionicons name="time-outline" size={18} color={colors.primary} />
+          <Text style={styles.historyBtnText}>View Route History</Text>
+          <Ionicons name="chevron-forward" size={18} color={colors.primary} />
+        </Pressable>
+
+        {loading ? (
+          <ActivityIndicator color={colors.primary} style={styles.loading} />
+        ) : null}
+        {loadError ? (
+          <View style={styles.errorCard}>
+            <Text style={styles.errorText}>{loadError}</Text>
+            <Pressable onPress={() => void load()} style={styles.retryBtn}>
+              <Text style={styles.retryText}>Try Again</Text>
+            </Pressable>
+          </View>
+        ) : null}
+
+        {!loading && !loadError ? completedToday.map((schedule) => (
           <View key={schedule.id} style={styles.completedBanner}>
             <Ionicons name="checkmark-circle" size={22} color={colors.primary} />
             <View style={styles.completedBody}>
@@ -82,9 +127,9 @@ export default function DriverRouteScreen() {
               </Text>
             </View>
           </View>
-        ))}
+        )) : null}
 
-        {activeSchedule && route ? (
+        {loading || loadError ? null : activeSchedule && route ? (
           <>
             <View style={styles.scheduleCard}>
               <Text style={styles.scheduleLabel}>
@@ -124,6 +169,23 @@ function createStyles(colors: ThemeColors) {
   return StyleSheet.create({
     screen: { flex: 1, backgroundColor: colors.background },
     content: { padding: spacing.md, gap: spacing.sm, paddingBottom: spacing.xl },
+    loading: { marginVertical: spacing.xl },
+    errorCard: {
+      alignItems: "center",
+      gap: spacing.sm,
+      backgroundColor: colors.surface,
+      borderRadius: radius.md,
+      borderWidth: 1,
+      borderColor: colors.border,
+      padding: spacing.md,
+    },
+    errorText: {
+      color: colors.danger,
+      fontSize: fontSize.sm,
+      textAlign: "center",
+    },
+    retryBtn: { padding: spacing.sm },
+    retryText: { color: colors.primary, fontSize: fontSize.sm, fontWeight: "700" },
     completedBanner: {
       flexDirection: "row",
       alignItems: "flex-start",
@@ -191,6 +253,22 @@ function createStyles(colors: ThemeColors) {
       color: colors.white,
       fontWeight: "800",
       fontSize: fontSize.md,
+    },
+    historyBtn: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: spacing.sm,
+      backgroundColor: colors.surface,
+      borderRadius: radius.md,
+      borderWidth: 1,
+      borderColor: colors.border,
+      padding: spacing.md,
+    },
+    historyBtnText: {
+      flex: 1,
+      color: colors.primary,
+      fontWeight: "700",
+      fontSize: fontSize.sm,
     },
     allDone: {
       textAlign: "center",
