@@ -1,6 +1,6 @@
-import { useEffect, useMemo, useRef } from "react";
+import { useCallback, useEffect, useMemo, useRef } from "react";
 import { StyleSheet, Text, View } from "react-native";
-import MapView, { Marker, Polyline, PROVIDER_DEFAULT } from "react-native-maps";
+import WebView, { type WebView as WebViewType } from "react-native-webview";
 import type { RouteStopItem } from "@/lib/data/routes";
 import type { DriverLocation } from "@/lib/data/tracking";
 import { useTheme } from "@/context/ThemeContext";
@@ -11,134 +11,203 @@ type Props = {
   driverLocation?: DriverLocation | null;
 };
 
+type MapStop = Pick<
+  RouteStopItem,
+  "id" | "stopOrder" | "name" | "description" | "latitude" | "longitude"
+>;
+
+type MapPayload = {
+  stops: MapStop[];
+  driverLocation: {
+    latitude: number;
+    longitude: number;
+    driverName: string;
+    isTracking: boolean;
+    updatedAt: string;
+  } | null;
+};
+
 export default function RouteMapView({
   stops,
   height = 240,
   driverLocation,
 }: Props) {
-  const mapRef = useRef<MapView>(null);
+  const mapRef = useRef<WebViewType>(null);
+  const webViewLoaded = useRef(false);
   const { colors } = useTheme();
-  const validStops = useMemo(
-    () => stops.filter((stop) => isValidCoordinate(stop.latitude, stop.longitude)),
-    [stops]
-  );
-  const validDriverLocation =
-    driverLocation &&
-    isValidCoordinate(driverLocation.latitude, driverLocation.longitude)
-      ? driverLocation
-      : null;
-  const routeRegion = useMemo(() => {
-    const coordinates = validStops.map((stop) => ({
-      latitude: stop.latitude,
-      longitude: stop.longitude,
-    }));
-    if (coordinates.length === 0) return null;
-    const bounds = coordinates.reduce(
-      (current, coordinate) => ({
-        minLat: Math.min(current.minLat, coordinate.latitude),
-        maxLat: Math.max(current.maxLat, coordinate.latitude),
-        minLng: Math.min(current.minLng, coordinate.longitude),
-        maxLng: Math.max(current.maxLng, coordinate.longitude),
-      }),
-      {
-        minLat: Number.POSITIVE_INFINITY,
-        maxLat: Number.NEGATIVE_INFINITY,
-        minLng: Number.POSITIVE_INFINITY,
-        maxLng: Number.NEGATIVE_INFINITY,
-      }
+  const payload = useMemo<MapPayload>(() => ({
+    stops: stops
+      .filter((stop) => isValidCoordinate(stop.latitude, stop.longitude))
+      .map(({ id, stopOrder, name, description, latitude, longitude }) => ({
+        id,
+        stopOrder,
+        name,
+        description,
+        latitude,
+        longitude,
+      })),
+    driverLocation:
+      driverLocation &&
+      isValidCoordinate(driverLocation.latitude, driverLocation.longitude)
+        ? {
+            latitude: driverLocation.latitude,
+            longitude: driverLocation.longitude,
+            driverName: driverLocation.driverName,
+            isTracking: driverLocation.isTracking,
+            updatedAt: driverLocation.updatedAt,
+          }
+        : null,
+  }), [driverLocation, stops]);
+
+  const updateMap = useCallback(() => {
+    if (!webViewLoaded.current) return;
+    const data = JSON.stringify(payload).replace(/</g, "\\u003c");
+    mapRef.current?.injectJavaScript(
+      `window.updateEcotrackMap(${data}); true;`
     );
-    return {
-      latitude: (bounds.minLat + bounds.maxLat) / 2,
-      longitude: (bounds.minLng + bounds.maxLng) / 2,
-      latitudeDelta: Math.min(20, Math.max(0.02, (bounds.maxLat - bounds.minLat) * 1.6)),
-      longitudeDelta: Math.min(20, Math.max(0.02, (bounds.maxLng - bounds.minLng) * 1.6)),
-    };
-  }, [validStops]);
-  const initialRegion = useMemo(
-    () =>
-      routeRegion ?? {
-        latitude: validDriverLocation?.latitude ?? 8.6543,
-        longitude: validDriverLocation?.longitude ?? 124.755,
-        latitudeDelta: 0.08,
-        longitudeDelta: 0.08,
-      },
-    [routeRegion, validDriverLocation]
-  );
+  }, [payload]);
 
   useEffect(() => {
-    if (!routeRegion) return;
-    mapRef.current?.animateToRegion(routeRegion, 350);
-  }, [routeRegion]);
+    updateMap();
+  }, [updateMap]);
 
-  useEffect(() => {
-    if (!validDriverLocation) return;
-    mapRef.current?.animateCamera(
-      {
-        center: {
-          latitude: validDriverLocation.latitude,
-          longitude: validDriverLocation.longitude,
-        },
-      },
-      { duration: 500 }
-    );
-  }, [validDriverLocation]);
-
-  const coordinates = validStops.map((s) => ({
-    latitude: s.latitude,
-    longitude: s.longitude,
-  }));
-  const progressCoordinates =
-    coordinates.length > 0 || validDriverLocation
-      ? coordinates
-      : [];
+  const mapHtml = useMemo(
+    () => createLeafletHtml(colors.text),
+    [colors.text]
+  );
 
   return (
     <View style={[styles.wrap, { height }]}>
-      {progressCoordinates.length === 0 && !validDriverLocation ? (
+      {payload.stops.length === 0 && !payload.driverLocation ? (
         <View style={styles.empty}>
           <Text style={{ color: colors.textMuted, textAlign: "center" }}>
             Route map is unavailable because no valid location coordinates were provided.
           </Text>
         </View>
       ) : (
-        <MapView
+        <WebView
           ref={mapRef}
-          style={StyleSheet.absoluteFill}
-          provider={PROVIDER_DEFAULT}
-          initialRegion={initialRegion}
-          scrollEnabled
-          zoomEnabled
-        >
-          {progressCoordinates.length >= 2 ? (
-            <Polyline coordinates={progressCoordinates} strokeColor="#056636" strokeWidth={4} />
-          ) : null}
-          {validStops.map((stop) => (
-            <Marker
-              key={stop.id}
-              coordinate={{ latitude: stop.latitude, longitude: stop.longitude }}
-              title={stop.name}
-              description={stop.description}
-            />
-          ))}
-          {validDriverLocation ? (
-            <Marker
-              coordinate={{
-                latitude: validDriverLocation.latitude,
-                longitude: validDriverLocation.longitude,
-              }}
-              title={`${validDriverLocation.driverName} — Driver`}
-              description={
-                validDriverLocation.isTracking
-                  ? "Live driver location"
-                  : `Last update: ${new Date(validDriverLocation.updatedAt).toLocaleTimeString()}`
-              }
-              pinColor={validDriverLocation.isTracking ? "#2563eb" : "#6b7280"}
-            />
-          ) : null}
-        </MapView>
+          source={{ html: mapHtml, baseUrl: "https://ecotrack.local" }}
+          style={styles.webView}
+          originWhitelist={["https://*"]}
+          javaScriptEnabled
+          domStorageEnabled
+          onLoadStart={() => {
+            webViewLoaded.current = false;
+          }}
+          onLoadEnd={() => {
+            webViewLoaded.current = true;
+            updateMap();
+          }}
+          onError={() => {
+            webViewLoaded.current = false;
+          }}
+          onHttpError={() => {
+            webViewLoaded.current = false;
+          }}
+          accessibilityLabel="Interactive collection route map"
+          scrollEnabled={false}
+          bounces={false}
+        />
       )}
     </View>
   );
+}
+
+function createLeafletHtml(textColor: string): string {
+  const safeTextColor = /^#[\da-f]{6}$/i.test(textColor) ? textColor : "#1f2937";
+  return `<!doctype html>
+<html>
+<head>
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+  <style>
+    * { box-sizing: border-box; }
+    html, body, #map { width: 100%; height: 100%; margin: 0; background: #e5e7eb; }
+    .stop-icon {
+      display: flex; width: 30px; height: 30px; align-items: center; justify-content: center;
+      border: 2px solid white; border-radius: 50%; background: #056636; color: white;
+      box-shadow: 0 1px 5px #0006; font: 700 13px sans-serif;
+    }
+    .driver-icon {
+      width: 18px; height: 18px; border: 3px solid white; border-radius: 50%;
+      background: #2563eb; box-shadow: 0 1px 5px #0007;
+    }
+    .leaflet-popup-content-wrapper, .leaflet-popup-tip { color: ${safeTextColor}; }
+    .leaflet-control-attribution { font-size: 10px !important; }
+  </style>
+</head>
+<body>
+  <div id="map" aria-label="Collection route map"></div>
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <script>
+    const map = L.map('map', { zoomControl: true }).setView([8.6543, 124.755], 13);
+    L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      maxZoom: 19,
+      attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+    }).addTo(map);
+    const routeLayer = L.layerGroup().addTo(map);
+    let hasInitialBounds = false;
+
+    window.updateEcotrackMap = function(data) {
+      routeLayer.clearLayers();
+      const points = data.stops.map(stop => [stop.latitude, stop.longitude]);
+
+      if (points.length > 1) {
+        L.polyline(points, { color: '#056636', weight: 5, opacity: 0.85 }).addTo(routeLayer);
+      }
+
+      data.stops.forEach(stop => {
+        const icon = L.divIcon({
+          className: '',
+          html: '<div class="stop-icon">' + escapeHtml(String(stop.stopOrder)) + '</div>',
+          iconSize: [30, 30],
+          iconAnchor: [15, 15]
+        });
+        L.marker([stop.latitude, stop.longitude], { icon }).bindPopup(
+          '<strong>' + escapeHtml(stop.name) + '</strong>' +
+          (stop.description ? '<br>' + escapeHtml(stop.description) : '')
+        ).addTo(routeLayer);
+      });
+
+      if (data.driverLocation) {
+        const driver = data.driverLocation;
+        const icon = L.divIcon({
+          className: '',
+          html: '<div class="driver-icon"></div>',
+          iconSize: [18, 18],
+          iconAnchor: [9, 9]
+        });
+        const status = driver.isTracking
+          ? 'Live driver location'
+          : 'Last update: ' + new Date(driver.updatedAt).toLocaleTimeString();
+        L.marker([driver.latitude, driver.longitude], { icon })
+          .bindPopup('<strong>' + escapeHtml(driver.driverName) + ' — Driver</strong><br>' + escapeHtml(status))
+          .addTo(routeLayer);
+      }
+
+      if (!hasInitialBounds) {
+        const bounds = points.slice();
+        if (data.driverLocation) {
+          bounds.push([data.driverLocation.latitude, data.driverLocation.longitude]);
+        }
+        if (bounds.length > 1) {
+          map.fitBounds(bounds, { padding: [28, 28], maxZoom: 16 });
+        } else if (bounds.length === 1) {
+          map.setView(bounds[0], 15);
+        }
+        hasInitialBounds = bounds.length > 0;
+      }
+    };
+
+    function escapeHtml(value) {
+      return String(value).replace(/[&<>"']/g, character => ({
+        '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
+      })[character]);
+    }
+  </script>
+</body>
+</html>`;
 }
 
 function isValidCoordinate(latitude: number, longitude: number): boolean {
@@ -158,6 +227,10 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     overflow: "hidden",
     backgroundColor: "#e5e7eb",
+  },
+  webView: {
+    flex: 1,
+    backgroundColor: "transparent",
   },
   empty: {
     ...StyleSheet.absoluteFillObject,

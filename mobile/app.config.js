@@ -1,3 +1,4 @@
+// eslint-disable-next-line @typescript-eslint/no-require-imports
 const appJson = require("./app.json");
 
 const supabaseUrl =
