@@ -21,6 +21,7 @@ const CollectionTrackingLeafletMap = dynamic(
 type Props = {
   overlays: CollectionRouteOverlay[];
   hideLegend?: boolean;
+  locationError?: string | null;
 };
 
 const LEGEND: { label: string; status: ScheduleStatus }[] = [
@@ -33,20 +34,32 @@ const LEGEND: { label: string; status: ScheduleStatus }[] = [
 export default function CollectionTrackingMap({
   overlays,
   hideLegend = false,
+  locationError,
 }: Props) {
+  const liveTruckCount = overlays.filter((overlay) => overlay.truckLocation).length;
+
   return (
     <div className="dashboard-card flex h-full min-h-[320px] flex-col overflow-hidden">
       <div className="flex shrink-0 items-center justify-between border-b border-gray-100 px-4 py-3">
         <div>
           <h3 className="text-sm font-bold text-gray-900">Live Collection Tracking</h3>
           <p className="text-xs text-gray-500">
-            {overlays.length} scheduled route{overlays.length === 1 ? "" : "s"} on map
+            {liveTruckCount} live truck{liveTruckCount === 1 ? "" : "s"} ·{" "}
+            {overlays.length} scheduled route{overlays.length === 1 ? "" : "s"}
           </p>
         </div>
       </div>
 
       <div className="relative min-h-[240px] flex-1">
         <CollectionTrackingLeafletMap overlays={overlays} />
+        {locationError ? (
+          <p
+            role="status"
+            className="absolute right-2 top-2 z-[1000] max-w-[80%] rounded bg-white/95 px-2 py-1 text-[10px] text-amber-800 shadow"
+          >
+            {locationError}
+          </p>
+        ) : null}
 
         {!hideLegend && (
           <div className="pointer-events-none absolute bottom-3 left-3 z-[1000] rounded-lg bg-white/95 p-2 shadow-sm">

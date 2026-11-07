@@ -47,12 +47,6 @@ function truckIcon() {
   });
 }
 
-function activeStopIndex(stops: CollectionRouteOverlay["stops"]): number {
-  const firstOpen = stops.findIndex(
-    (stop) => stop.status !== "completed" && stop.status !== "end"
-  );
-  return firstOpen >= 0 ? firstOpen : Math.max(stops.length - 1, 0);
-}
 function numberedIcon(order: number, status: RouteStopStatus) {
   return L.divIcon({
     className: "",
@@ -69,14 +63,17 @@ function numberedIcon(order: number, status: RouteStopStatus) {
 
 function FitAllBounds({ overlays }: { overlays: CollectionRouteOverlay[] }) {
   const map = useMap();
+  const routeBounds = JSON.stringify(
+    overlays.flatMap((overlay) =>
+      overlay.stops.map((stop) => [stop.latitude, stop.longitude])
+    )
+  );
 
   useEffect(() => {
-    const points = overlays.flatMap((overlay) =>
-      overlay.stops.map((stop) => [stop.latitude, stop.longitude] as [number, number])
-    );
+    const points = JSON.parse(routeBounds) as [number, number][];
     if (points.length === 0) return;
     map.fitBounds(L.latLngBounds(points), { padding: [28, 28], maxZoom: 15 });
-  }, [map, overlays]);
+  }, [map, routeBounds]);
 
   return null;
 }
@@ -115,7 +112,6 @@ export default function CollectionTrackingLeafletMap({ overlays }: Props) {
         const color = routeColor(overlay.status);
         const isOngoing = overlay.status === "ongoing";
         const isPending = overlay.status === "pending";
-        const truckStopIndex = isOngoing ? activeStopIndex(overlay.stops) : -1;
 
         return (
           <Fragment key={overlay.scheduleId}>
@@ -128,24 +124,22 @@ export default function CollectionTrackingLeafletMap({ overlays }: Props) {
                 dashArray: isPending ? "8 6" : undefined,
               }}
             />
-            {isOngoing && overlay.stops[truckStopIndex] ? (
+            {overlay.truckLocation ? (
               <Marker
                 key={`${overlay.scheduleId}-truck`}
-                position={[
-                  overlay.stops[truckStopIndex].latitude,
-                  overlay.stops[truckStopIndex].longitude,
-                ]}
+                position={[overlay.truckLocation.latitude, overlay.truckLocation.longitude]}
                 icon={truckIcon()}
                 zIndexOffset={1000}
               >
                 <Popup>
                   <div className="space-y-1 text-sm">
-                    <p className="font-bold text-gray-900">Collection in progress</p>
+                    <p className="font-bold text-gray-900">Live truck location</p>
                     <p className="text-gray-600">
-                      {overlay.driver ?? "Driver"} · {overlay.barangay}
+                      {overlay.truckLocation.driverName || overlay.driver || "Driver"} ·{" "}
+                      {overlay.barangay}
                     </p>
                     <p className="text-gray-600">
-                      Current stop: {overlay.stops[truckStopIndex].name}
+                      Updated {new Date(overlay.truckLocation.updatedAt).toLocaleTimeString()}
                     </p>
                   </div>
                 </Popup>

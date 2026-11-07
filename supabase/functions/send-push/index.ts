@@ -19,7 +19,9 @@ type PushTokenRow = {
 };
 
 type ExpoTicket = {
+  id?: string;
   status?: string;
+  message?: string;
   details?: { error?: string };
 };
 
@@ -104,6 +106,11 @@ Deno.serve(async (request: Request) => {
       const result = (await response.json()) as {
         data?: ExpoTicket[];
       };
+      if (!result.data || result.data.length !== batch.length) {
+        console.error("Expo push gateway returned an incomplete ticket response.");
+        return new Response("Push delivery could not be confirmed", { status: 502 });
+      }
+
       const invalidTokens = batch.filter(
         (_, index) =>
           result.data?.[index]?.details?.error === "DeviceNotRegistered"
@@ -115,7 +122,21 @@ Deno.serve(async (request: Request) => {
           invalidTokens.map((token) => token.expo_push_token)
         );
       }
-      sent += batch.length - invalidTokens.length;
+      const failures = result.data.filter((ticket) => ticket.status !== "ok");
+      for (const ticket of failures) {
+        console.error(
+          "Expo rejected a push notification:",
+          ticket.details?.error ?? "UnknownError",
+          ticket.message ?? "No error message provided."
+        );
+      }
+      sent += result.data.filter((ticket) => ticket.status === "ok").length;
+      if (failures.length > 0) {
+        return new Response(
+          `Expo rejected ${failures.length} push notification(s).`,
+          { status: 502 }
+        );
+      }
     }
 
     return Response.json({ sent });

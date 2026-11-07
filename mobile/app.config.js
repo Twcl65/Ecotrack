@@ -21,6 +21,9 @@ module.exports = {
     },
     android: {
       ...appJson.expo.android,
+      googleServicesFile:
+        process.env.GOOGLE_SERVICES_JSON ||
+        appJson.expo.android.googleServicesFile,
       versionCode: 1,
       softwareKeyboardLayoutMode: "resize",
       permissions: [

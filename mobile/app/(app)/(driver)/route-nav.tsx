@@ -25,8 +25,7 @@ import {
 } from "@/lib/data/driver";
 import {
   formatRouteName,
-  fetchRouteForBarangay,
-  fetchRouteById,
+  fetchRouteForSchedule,
   getRouteDirection,
   getNextStopIndex,
   getStopProgress,
@@ -98,11 +97,7 @@ export default function RouteNavScreen() {
         return;
       }
 
-      const data =
-        (active.routeId
-          ? await fetchRouteById(active.routeId, driverName)
-          : null) ??
-        (await fetchRouteForBarangay(active.barangay, driverName));
+      const data = await fetchRouteForSchedule(active, driverName);
       setRoute(data);
       routeRef.current = data;
 

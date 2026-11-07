@@ -39,6 +39,13 @@ export type CollectionRouteStop = {
   status: RouteStopStatus;
 };
 
+export type CollectionTruckLocation = {
+  driverName: string;
+  latitude: number;
+  longitude: number;
+  updatedAt: string;
+};
+
 export type CollectionRouteOverlay = {
   scheduleId: string;
   barangay: string;
@@ -47,6 +54,7 @@ export type CollectionRouteOverlay = {
   routeName: string;
   routeCode: string;
   stops: CollectionRouteStop[];
+  truckLocation: CollectionTruckLocation | null;
 };
 
 export type CollectionMonitoringData = {

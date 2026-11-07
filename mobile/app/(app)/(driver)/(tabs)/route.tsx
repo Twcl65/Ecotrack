@@ -22,7 +22,7 @@ import {
 import {
   formatRouteName,
   getRouteDirection,
-  fetchRouteForBarangay,
+  fetchRouteForSchedule,
   type DriverRoute,
 } from "@/lib/data/routes";
 import { fetchSchedules, formatTimeRange, type ScheduleItem } from "@/lib/data/schedules";
@@ -56,10 +56,10 @@ export default function DriverRouteScreen() {
       setCompletedToday(completed);
 
       if (active) {
-        setRoute(await fetchRouteForBarangay(active.barangay, driverName));
+        setRoute(await fetchRouteForSchedule(active, driverName));
       } else if (completed.length > 0) {
         const last = completed[completed.length - 1];
-        setRoute(await fetchRouteForBarangay(last.barangay, driverName));
+        setRoute(await fetchRouteForSchedule(last, driverName));
       } else {
         setRoute(null);
       }
@@ -129,7 +129,7 @@ export default function DriverRouteScreen() {
           </View>
         )) : null}
 
-        {loading || loadError ? null : activeSchedule && route ? (
+        {loading || loadError ? null : activeSchedule ? (
           <>
             <View style={styles.scheduleCard}>
               <Text style={styles.scheduleLabel}>
@@ -138,8 +138,9 @@ export default function DriverRouteScreen() {
                   : "Today’s Collection"}
               </Text>
               <Text style={styles.scheduleBarangay}>
-                {getRouteDirection(route, activeSchedule.barangay)} Jasaan -{" "}
-                {formatRouteName(route.name)}
+                {route
+                  ? `${getRouteDirection(route, activeSchedule.barangay)} Jasaan - ${formatRouteName(route.name)}`
+                  : activeSchedule.barangay}
               </Text>
               <View style={styles.scheduleMetaRow}>
                 <Text style={styles.scheduleTime}>
@@ -148,9 +149,15 @@ export default function DriverRouteScreen() {
                 <CollectionStatusBadge status={activeSchedule.status} />
               </View>
               <Text style={styles.scheduleTime}>{activeSchedule.dateLabel}</Text>
-              <Pressable style={styles.primaryBtn} onPress={openCollection}>
-                <Text style={styles.primaryBtnText}>View route</Text>
-              </Pressable>
+              {route ? (
+                <Pressable style={styles.primaryBtn} onPress={openCollection}>
+                  <Text style={styles.primaryBtnText}>View route</Text>
+                </Pressable>
+              ) : (
+                <Text style={styles.empty}>
+                  Route details are unavailable for this collection. Please contact your administrator.
+                </Text>
+              )}
             </View>
           </>
         ) : completedToday.length > 0 ? (

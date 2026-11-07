@@ -130,8 +130,9 @@ function createLeafletHtml(textColor: string): string {
       box-shadow: 0 1px 5px #0006; font: 700 13px sans-serif;
     }
     .driver-icon {
-      width: 18px; height: 18px; border: 3px solid white; border-radius: 50%;
-      background: #2563eb; box-shadow: 0 1px 5px #0007;
+      display: flex; width: 34px; height: 34px; align-items: center; justify-content: center;
+      border: 2px solid white; border-radius: 50%; background: #056636;
+      box-shadow: 0 1px 6px #0008;
     }
     .leaflet-popup-content-wrapper, .leaflet-popup-tip { color: ${safeTextColor}; }
     .leaflet-control-attribution { font-size: 10px !important; }
@@ -148,6 +149,7 @@ function createLeafletHtml(textColor: string): string {
     }).addTo(map);
     const routeLayer = L.layerGroup().addTo(map);
     let hasInitialBounds = false;
+    let hasCenteredOnDriver = false;
 
     window.updateEcotrackMap = function(data) {
       routeLayer.clearLayers();
@@ -170,33 +172,38 @@ function createLeafletHtml(textColor: string): string {
         ).addTo(routeLayer);
       });
 
-      if (data.driverLocation) {
-        const driver = data.driverLocation;
-        const icon = L.divIcon({
-          className: '',
-          html: '<div class="driver-icon"></div>',
-          iconSize: [18, 18],
-          iconAnchor: [9, 9]
-        });
-        const status = driver.isTracking
-          ? 'Live driver location'
-          : 'Last update: ' + new Date(driver.updatedAt).toLocaleTimeString();
-        L.marker([driver.latitude, driver.longitude], { icon })
-          .bindPopup('<strong>' + escapeHtml(driver.driverName) + ' — Driver</strong><br>' + escapeHtml(status))
-          .addTo(routeLayer);
-      }
-
       if (!hasInitialBounds) {
         const bounds = points.slice();
-        if (data.driverLocation) {
-          bounds.push([data.driverLocation.latitude, data.driverLocation.longitude]);
-        }
         if (bounds.length > 1) {
           map.fitBounds(bounds, { padding: [28, 28], maxZoom: 16 });
         } else if (bounds.length === 1) {
           map.setView(bounds[0], 15);
         }
         hasInitialBounds = bounds.length > 0;
+      }
+
+      if (data.driverLocation) {
+        const driver = data.driverLocation;
+        const icon = L.divIcon({
+          className: '',
+          html: '<div class="driver-icon"><svg viewBox="0 0 24 24" width="23" height="23" aria-hidden="true"><path fill="white" d="M3 6h12a2 2 0 0 1 2 2v2h2.2a2 2 0 0 1 1.6.8l1.8 2.4a2 2 0 0 1 .4 1.2V18h-2.1a3 3 0 0 1-5.8 0H9.9a3 3 0 0 1-5.8 0H2V8a2 2 0 0 1 1-2Zm2 9a1.5 1.5 0 1 0 0 3 1.5 1.5 0 0 0 0-3Zm11 0a1.5 1.5 0 1 0 0 3 1.5 1.5 0 0 0 0-3Zm1-3v2h4v-.4L19.2 12H17Z"/></svg></div>',
+          iconSize: [34, 34],
+          iconAnchor: [17, 17]
+        });
+        const status = driver.isTracking
+          ? 'Live driver location'
+          : 'Last update: ' + new Date(driver.updatedAt).toLocaleTimeString();
+        const driverPoint = L.latLng(driver.latitude, driver.longitude);
+        L.marker(driverPoint, { icon })
+          .bindPopup('<strong>' + escapeHtml(driver.driverName) + ' — Driver</strong><br>' + escapeHtml(status))
+          .addTo(routeLayer);
+
+        if (!hasCenteredOnDriver) {
+          map.setView(driverPoint, Math.max(map.getZoom(), 15));
+          hasCenteredOnDriver = true;
+        } else if (!map.getBounds().contains(driverPoint)) {
+          map.panTo(driverPoint);
+        }
       }
     };
 

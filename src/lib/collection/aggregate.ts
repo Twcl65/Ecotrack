@@ -5,6 +5,7 @@ import type {
   CollectionMonitoringKpis,
   CollectionProgressSlice,
   CollectionRouteOverlay,
+  CollectionTruckLocation,
 } from "@/types/collection-monitoring";
 import { BARANGAY_MAP_COORDS } from "@/types/collection-monitoring";
 import type { Schedule, ScheduleStatus } from "@/types/schedules";
@@ -150,22 +151,25 @@ function findRouteForSchedule(schedule: Schedule, routes: Route[]): Route | unde
 
 export function buildRouteOverlays(
   daySchedules: Schedule[],
-  routes: Route[]
+  routes: Route[],
+  truckLocations: Map<string, CollectionTruckLocation> = new Map()
 ): CollectionRouteOverlay[] {
   const operational = daySchedules.filter(isOperationalSchedule);
 
   return operational.flatMap((schedule) => {
     const route = findRouteForSchedule(schedule, routes);
     if (!route || route.stops.length === 0) return [];
+    const truckLocation = truckLocations.get(schedule.id) ?? null;
 
     return [
       {
         scheduleId: schedule.id,
         barangay: schedule.barangay,
         driver: schedule.driver,
-        status: schedule.status,
+        status: truckLocation ? "ongoing" : schedule.status,
         routeName: route.name,
         routeCode: route.routeCode,
+        truckLocation,
         stops: route.stops.map((stop) => ({
           stopOrder: stop.stopOrder,
           name: stop.name,

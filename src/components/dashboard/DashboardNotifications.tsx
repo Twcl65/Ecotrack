@@ -114,7 +114,7 @@ export default function DashboardNotifications({ notifications }: Props) {
       </button>
 
       {open && (
-        <div className="absolute right-0 top-full z-50 mt-2 w-[min(100vw-2rem,360px)] overflow-hidden rounded-xl border border-gray-200 bg-white shadow-xl">
+        <div className="absolute right-0 top-full z-[1050] mt-2 w-[min(100vw-2rem,360px)] overflow-hidden rounded-xl border border-gray-200 bg-white shadow-xl">
           <div className="flex items-center justify-between border-b border-gray-100 px-4 py-3">
             <h2 className="text-sm font-bold text-gray-900">Notifications</h2>
             {unreadCount > 0 && (

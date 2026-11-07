@@ -1,4 +1,5 @@
 import { supabase } from "../supabase";
+import type { ScheduleItem } from "./schedules";
 
 export type RouteStopItem = {
   id: string;
@@ -260,6 +261,16 @@ export async function fetchRouteById(
   if (!route) return null;
   const mappedStops = await loadStopsForRoute(route.id);
   return mapRouteRow(route, mappedStops, driverName);
+}
+
+export async function fetchRouteForSchedule(
+  schedule: Pick<ScheduleItem, "routeId" | "barangay">,
+  driverName: string
+): Promise<DriverRoute | null> {
+  const assignedRoute = schedule.routeId
+    ? await fetchRouteById(schedule.routeId, driverName)
+    : null;
+  return assignedRoute ?? fetchRouteForBarangay(schedule.barangay, driverName);
 }
 
 export async function fetchDriverRoute(driverName: string): Promise<DriverRoute | null> {

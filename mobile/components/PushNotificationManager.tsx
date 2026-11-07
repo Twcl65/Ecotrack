@@ -1,5 +1,6 @@
 import { useRouter } from "expo-router";
 import * as Notifications from "expo-notifications";
+import { AppState } from "react-native";
 import { useCallback, useEffect, useRef } from "react";
 import { useAuth } from "@/context/AuthContext";
 import { registerPushToken } from "@/lib/pushNotifications";
@@ -9,30 +10,58 @@ export default function PushNotificationManager() {
   const router = useRouter();
   const handledResponseId = useRef<string | null>(null);
   const registeredAccount = useRef<string | null>(null);
+  const registeringAccount = useRef<string | null>(null);
 
   useEffect(() => {
     if (!session?.user || !profile) {
       registeredAccount.current = null;
+      registeringAccount.current = null;
       return;
     }
     const accountKey = `${session.user.id}:${profile.role}`;
-    if (registeredAccount.current === accountKey) return;
-    registeredAccount.current = accountKey;
+    const userId = session.user.id;
+    const role = profile.role;
     let active = true;
-    void registerPushToken(session.user.id, profile.role)
-      .then((result) => {
-        if (active && result.error) console.warn(result.error);
-      })
-      .catch((error: unknown) => {
+
+    async function registerToken() {
+      if (
+        registeredAccount.current === accountKey ||
+        registeringAccount.current === accountKey
+      ) {
+        return;
+      }
+
+      registeringAccount.current = accountKey;
+      try {
+        const result = await registerPushToken(userId, role);
+        if (!active) return;
+        if (result.error) {
+          console.warn(result.error);
+          return;
+        }
+        registeredAccount.current = accountKey;
+      } catch (error: unknown) {
         if (active) {
           console.warn(
             "Could not set up push notifications:",
             error instanceof Error ? error.message : error
           );
         }
-      });
+      } finally {
+        if (registeringAccount.current === accountKey) {
+          registeringAccount.current = null;
+        }
+      }
+    }
+
+    void registerToken();
+    const appStateSubscription = AppState.addEventListener("change", (state) => {
+      if (state === "active") void registerToken();
+    });
+
     return () => {
       active = false;
+      appStateSubscription.remove();
     };
   }, [profile, session?.user]);
 
