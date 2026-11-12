@@ -14,6 +14,7 @@ export type ReportType =
   | "barangay"
   | "complaint"
   | "driver"
+  | "vehicle"
   | "route"
   | "user";
 
@@ -91,20 +92,20 @@ export const REPORT_TYPE_OPTIONS: ReportTypeOption[] = [
     iconColor: "text-gray-600",
   },
   {
+    value: "route",
+    label: "Route Report",
+    description: "Routes used and collection progress",
+    icon: Route,
+    iconBg: "bg-orange-100",
+    iconColor: "text-orange-600",
+  },
+  {
     value: "collection",
     label: "Collection Report",
     description: "Summary of waste collection activities",
     icon: Truck,
     iconBg: "bg-emerald-100",
     iconColor: "text-emerald-700",
-  },
-  {
-    value: "barangay",
-    label: "Barangay Collection Report",
-    description: "Collection history per barangay",
-    icon: MapPin,
-    iconBg: "bg-purple-100",
-    iconColor: "text-purple-700",
   },
   {
     value: "complaint",
@@ -123,20 +124,20 @@ export const REPORT_TYPE_OPTIONS: ReportTypeOption[] = [
     iconColor: "text-blue-700",
   },
   {
-    value: "route",
-    label: "Route Report",
-    description: "Routes used and collection progress",
-    icon: Route,
-    iconBg: "bg-orange-100",
-    iconColor: "text-orange-600",
+    value: "vehicle",
+    label: "Vehicle Report",
+    description: "Vehicle distance and maintenance schedule/history",
+    icon: Truck,
+    iconBg: "bg-cyan-100",
+    iconColor: "text-cyan-700",
   },
   {
-    value: "user",
-    label: "User Report",
-    description: "Registered users summary",
-    icon: Users,
-    iconBg: "bg-violet-100",
-    iconColor: "text-violet-700",
+    value: "barangay",
+    label: "Barangay Collection Report",
+    description: "Collection history per barangay",
+    icon: MapPin,
+    iconBg: "bg-purple-100",
+    iconColor: "text-purple-700",
   },
 ];
 
@@ -167,6 +168,12 @@ export const REPORT_TYPE_META: Record<
     icon: User,
     iconBg: "bg-blue-100",
     iconColor: "text-blue-700",
+  },
+  vehicle: {
+    name: "Vehicle Report",
+    icon: Truck,
+    iconBg: "bg-cyan-100",
+    iconColor: "text-cyan-700",
   },
   route: {
     name: "Route Report",

@@ -51,13 +51,3 @@ export async function getGeneratedReports(): Promise<GeneratedReport[]> {
     return [];
   }
 }
-
-export async function getWasteKgBaseline(): Promise<number> {
-  try {
-    const supabase = await createClient();
-    const { data } = await supabase.from("dashboard_kpis").select("waste_collected_kg").single();
-    return data?.waste_collected_kg ? Number(data.waste_collected_kg) : 30670;
-  } catch {
-    return 30670;
-  }
-}

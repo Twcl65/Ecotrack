@@ -45,6 +45,7 @@ const emptyForm = (): RouteFormValues => ({
   distanceKm: "",
   estimatedMinutes: "",
   driverName: "",
+  vehicleId: "",
   status: "active",
   stops: [],
 });
@@ -443,7 +444,7 @@ export default function RouteFormModal({
             </div>
           )}
 
-          <div className={`grid grid-cols-2 gap-3 ${mode === "add" ? "sm:grid-cols-3" : "sm:grid-cols-4"}`}>
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
             <Field label="Distance (km)">
               <input
                 readOnly
@@ -485,6 +486,14 @@ export default function RouteFormModal({
                   No drivers found. Add driver accounts in User Management first.
                 </p>
               )}
+            </Field>
+            <Field label="Vehicle ID">
+              <input
+                value={form.vehicleId}
+                onChange={(e) => setForm({ ...form, vehicleId: e.target.value })}
+                placeholder="e.g. VEH-001"
+                className={inputClass}
+              />
             </Field>
           </div>
 

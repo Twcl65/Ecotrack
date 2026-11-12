@@ -10,6 +10,7 @@ import { useUnreadCounts } from "@/hooks/useUnreadCounts";
 import { fontSize, radius, spacing, type ThemeColors } from "@/constants/theme";
 
 const MENU = [
+  { icon: "leaf-outline" as const, label: "Segregated Garbage Collection", route: "/(app)/(driver)/(tabs)/segregated" },
   { icon: "megaphone-outline" as const, label: "Announcements", route: "/(app)/(driver)/announcements" },
   { icon: "notifications-outline" as const, label: "Notifications", route: "/(app)/(driver)/(tabs)/notifications" },
   { icon: "person-outline" as const, label: "Personal Information", route: "/(app)/(driver)/profile" },

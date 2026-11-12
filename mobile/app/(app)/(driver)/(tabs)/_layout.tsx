@@ -73,6 +73,15 @@ export default function DriverTabsLayout() {
         }}
       />
       <Tabs.Screen
+        name="segregated"
+        options={{
+          title: "Segregated",
+          tabBarIcon: ({ color, size }) => (
+            <Ionicons name="leaf-outline" size={size} color={color} />
+          ),
+        }}
+      />
+      <Tabs.Screen
         name="notifications"
         options={{
           href: null,

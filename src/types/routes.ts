@@ -19,6 +19,7 @@ export type Route = {
   name: string;
   barangay: string;
   area: string;
+  vehicleId: string;
   distanceKm: number;
   estimatedMinutes: number;
   driverName: string;
@@ -51,6 +52,7 @@ export type RouteFormValues = {
   distanceKm: string;
   estimatedMinutes: string;
   driverName: string;
+  vehicleId: string;
   status: RouteStatus;
   stops: RouteFormStop[];
 };

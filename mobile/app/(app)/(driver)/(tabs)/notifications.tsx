@@ -61,6 +61,7 @@ export default function DriverNotificationsScreen() {
         title: item.detailTitle ?? item.title,
         details: item.details,
         timestamp: item.timestamp,
+        type: item.type,
       },
     } as never);
   }
@@ -115,6 +116,7 @@ export default function DriverNotificationsScreen() {
                 <Ionicons name="notifications" size={20} color={colors.primary} />
               </View>
               <View style={styles.body}>
+                <Text style={styles.type}>{item.type}</Text>
                 <Text style={styles.title}>{item.title}</Text>
                 <Text style={styles.message}>{item.message}</Text>
                 <Text style={styles.time}>{item.timestamp}</Text>
@@ -183,7 +185,17 @@ function createStyles(colors: ThemeColors) {
       alignItems: "center",
       justifyContent: "center",
     },
-    body: { flex: 1, gap: 4 },
+    body: { flex: 1, minWidth: 0, gap: 6 },
+    type: {
+      alignSelf: "flex-start",
+      color: colors.primary,
+      fontSize: fontSize.xs,
+      fontWeight: "700",
+      backgroundColor: colors.primaryLight,
+      paddingHorizontal: spacing.sm,
+      paddingVertical: spacing.xs,
+      borderRadius: radius.full,
+    },
     title: {
       fontWeight: "700",
       color: colors.text,
@@ -195,8 +207,10 @@ function createStyles(colors: ThemeColors) {
       lineHeight: 18,
     },
     time: {
+      alignSelf: "flex-end",
       color: colors.textMuted,
       fontSize: fontSize.xs,
+      textAlign: "right",
     },
   });
 }

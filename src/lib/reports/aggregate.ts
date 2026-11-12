@@ -10,7 +10,12 @@ import type {
 import type { Schedule } from "@/types/schedules";
 import { parseScheduleBarangays } from "@/lib/schedules/format";
 
-const WASTE_KG_PER_COLLECTION = 1334;
+type MonthlyCollectionReportAmount = {
+  reportYear: number;
+  monthNumber: number;
+  dayNumber: number;
+  totalKg: number;
+};
 
 function inRange(dateStr: string, from: string, to: string): boolean {
   return dateStr >= from && dateStr <= to;
@@ -83,7 +88,7 @@ export function computeReportAnalytics(
   schedules: Schedule[],
   complaints: Complaint[],
   filters: ReportFilters,
-  wasteKgBaseline = 30670
+  collectionReports: MonthlyCollectionReportAmount[] = []
 ): ReportAnalytics {
   const filteredSchedules = filterSchedules(schedules, filters);
   const filteredComplaints = filterComplaints(complaints, filters);
@@ -110,18 +115,26 @@ export function computeReportAnalytics(
       ? Math.round((completedCount / totalEligible) * 100)
       : 0;
 
-  const allCompleted = schedules.filter((s) => s.status === "completed").length;
-  const kgPerCompleted =
-    allCompleted > 0
-      ? wasteKgBaseline / allCompleted
-      : WASTE_KG_PER_COLLECTION;
+  const firstReportYear = Number(filters.fromDate.slice(0, 4));
+  const lastReportYear = Number(filters.toDate.slice(0, 4));
+  const totalWasteKg =
+    firstReportYear <= lastReportYear
+      ? collectionReports.reduce(
+          (total, entry) =>
+            entry.reportYear >= firstReportYear &&
+            entry.reportYear <= lastReportYear
+              ? total + entry.totalKg
+              : total,
+          0
+        )
+      : 0;
 
   const kpis: ReportKpis = {
     totalCollections: filteredSchedules.length,
     totalComplaints: filteredComplaints.length,
     activeDrivers: drivers.size,
     collectionRate,
-    totalWasteKg: Math.round(completedCount * kgPerCompleted),
+    totalWasteKg,
   };
 
   const dateMap = new Map<string, number>();
@@ -224,25 +237,6 @@ export function defaultReportFilters(): ReportFilters {
   return {
     fromDate: fmt(from),
     toDate: fmt(to),
-    reportType: "all",
-    barangay: "all",
-  };
-}
-
-export function initialReportFilters(
-  schedules: Schedule[],
-  complaints: Complaint[]
-): ReportFilters {
-  const dates = [
-    ...schedules.map((s) => s.date),
-    ...complaints.map((c) => c.filedAt.slice(0, 10)),
-  ].sort();
-
-  if (dates.length === 0) return defaultReportFilters();
-
-  return {
-    fromDate: dates[0],
-    toDate: dates[dates.length - 1],
     reportType: "all",
     barangay: "all",
   };

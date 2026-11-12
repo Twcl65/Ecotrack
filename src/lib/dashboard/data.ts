@@ -10,22 +10,26 @@ import {
   mapAnnouncementsForDashboard,
 } from "@/lib/dashboard/aggregate";
 import { getSchedules } from "@/lib/schedules/data";
+import { getMonthlyCollectionReports } from "@/lib/segregated-collection/monthly-data";
 import type { DashboardData } from "@/types/dashboard";
 
 export async function getDashboardData(): Promise<DashboardData> {
   try {
-    const [schedules, barangays, complaints, announcements] = await Promise.all([
+    const reportYear = new Date().getFullYear();
+    const [schedules, barangays, complaints, announcements, collectionReports] = await Promise.all([
       getSchedules(),
       getBarangays(),
       getComplaints(),
       getAnnouncements(),
+      getMonthlyCollectionReports(reportYear),
     ]);
 
     const hasData =
       schedules.length > 0 ||
       barangays.length > 0 ||
       complaints.length > 0 ||
-      announcements.length > 0;
+      announcements.length > 0 ||
+      collectionReports.length > 0;
 
     if (!hasData) {
       return emptyDashboardData();
@@ -35,7 +39,8 @@ export async function getDashboardData(): Promise<DashboardData> {
       kpis: computeDashboardKpis(
         schedules,
         barangays.filter((b) => b.status === "active").length || barangays.length,
-        complaints.length
+        complaints.length,
+        collectionReports.reduce((total, report) => total + report.totalKg, 0)
       ),
       collectionTrend: computeCollectionTrend(schedules),
       collectionStatus: computeCollectionStatus(schedules),

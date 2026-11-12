@@ -4,7 +4,7 @@ CREATE TABLE IF NOT EXISTS generated_reports (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   report_name TEXT NOT NULL,
   report_type TEXT NOT NULL CHECK (
-    report_type IN ('collection', 'barangay', 'complaint', 'driver', 'route', 'user')
+    report_type IN ('collection', 'barangay', 'complaint', 'driver', 'route', 'user', 'vehicle')
   ),
   period_label TEXT NOT NULL,
   generated_by TEXT NOT NULL DEFAULT 'Admin',

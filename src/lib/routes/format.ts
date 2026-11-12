@@ -65,6 +65,7 @@ export function mapRouteRow(
     barangay?: string | null;
     area?: string | null;
     driver_name?: string | null;
+    vehicle_id?: string | null;
     estimated_minutes?: number | null;
     archived_at?: string | null;
   },
@@ -83,6 +84,7 @@ export function mapRouteRow(
     name: row.name.replace(/ Route$/, "").replace(/^Route \d+ - /, "") || row.name,
     barangay: row.barangay ?? meta.barangay,
     area: row.area ?? meta.area,
+    vehicleId: row.vehicle_id ?? "",
     distanceKm,
     estimatedMinutes: row.estimated_minutes ?? estimateMinutes(distanceKm),
     driverName: row.driver_name ?? "",
@@ -167,6 +169,7 @@ export function formValuesToRow(values: {
   distanceKm: string;
   estimatedMinutes: string;
   driverName: string;
+  vehicleId: string;
   status: RouteStatus;
 }) {
   const area = primaryBarangayFromList(values.barangay) || values.area.trim();
@@ -178,7 +181,7 @@ export function formValuesToRow(values: {
     distance_km: parseFloat(values.distanceKm) || 0,
     estimated_minutes: parseInt(values.estimatedMinutes, 10) || 0,
     driver_name: values.driverName.trim(),
-    vehicle_id: null,
+    vehicle_id: values.vehicleId.trim() || null,
     status: values.status,
   };
 }
@@ -215,6 +218,7 @@ export function routeToFormValues(route: Route) {
     distanceKm: String(route.distanceKm),
     estimatedMinutes: String(route.estimatedMinutes),
     driverName: route.driverName,
+    vehicleId: route.vehicleId,
     status: route.status,
     stops: route.stops.map((s) => ({
       clientId: s.id,

@@ -50,8 +50,8 @@ const GENERATABLE_TYPES: Exclude<ReportType, "all">[] = [
   "barangay",
   "complaint",
   "driver",
+  "vehicle",
   "route",
-  "user",
 ];
 
 export async function generateReports(

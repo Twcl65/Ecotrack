@@ -8,7 +8,7 @@ import {
 import type { Route } from "@/types/routes";
 
 const ROUTE_SELECT =
-  "id, name, distance_km, status, created_at, route_code, barangay, area, driver_name, estimated_minutes, archived_at";
+  "id, name, distance_km, status, created_at, route_code, barangay, area, driver_name, vehicle_id, estimated_minutes, archived_at";
 
 const ROUTE_SELECT_BASIC = "id, name, distance_km, status, created_at, archived_at";
 

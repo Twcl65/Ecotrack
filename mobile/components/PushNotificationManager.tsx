@@ -119,7 +119,15 @@ export default function PushNotificationManager() {
         params: {
           title: content.title ?? "ECOTRACK notification",
           details: content.body ?? "",
-          timestamp: new Date().toLocaleString(),
+          timestamp: new Date(response.notification.date).toLocaleString(),
+          type:
+            typeof data.type === "string"
+              ? data.type
+              : kind === "schedule"
+                ? "Collection"
+                : kind === "complaint"
+                  ? "Complaint"
+                  : "Notification",
         },
       } as never);
     },

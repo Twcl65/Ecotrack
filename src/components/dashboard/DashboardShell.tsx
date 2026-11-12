@@ -30,10 +30,11 @@ export default function DashboardShell({
     pathname === "/dashboard/complaint" ||
     pathname === "/dashboard/feedback" ||
     pathname === "/dashboard/announcement" ||
-    pathname === "/dashboard/users";
+    pathname === "/dashboard/users" ||
+    pathname === "/dashboard/segregated-collection";
 
   return (
-    <div className="flex h-screen overflow-hidden bg-[#f4f6f5]">
+    <div className="admin-dashboard flex h-screen overflow-hidden bg-[#f4f6f5]">
       <DashboardSidebar open={sidebarOpen} onClose={() => setSidebarOpen(false)} />
       <div className="flex min-w-0 flex-1 flex-col overflow-hidden">
         <DashboardHeader

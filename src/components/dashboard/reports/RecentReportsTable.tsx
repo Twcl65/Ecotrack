@@ -2,36 +2,101 @@
 
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { useMemo, useState } from "react";
-import type { ReportAnalytics, ReportFilters } from "@/types/reports";
+import type { ReportFilters } from "@/types/reports";
 import { exportReportExcel, exportReportPdf } from "@/lib/reports/export";
 import type { GeneratedReport } from "@/types/reports";
 import { REPORT_TYPE_META } from "@/types/reports";
+import type { Complaint } from "@/types/complaint";
+import type { Route } from "@/types/routes";
+import type { Schedule } from "@/types/schedules";
+import type { VehicleMaintenanceData } from "@/app/dashboard/report/vehicle-actions";
 
 type Props = {
   reports: GeneratedReport[];
-  analytics: ReportAnalytics;
-  reportTypeFilter: ReportFilters["reportType"];
+  filters: ReportFilters;
+  schedules: Schedule[];
+  complaints: Complaint[];
+  routes: Route[];
+  vehicleMaintenance: VehicleMaintenanceData[];
 };
 
 const PAGE_SIZE = 10;
+const DISPLAYED_REPORT_TYPES = [
+  "route",
+  "collection",
+  "complaint",
+  "driver",
+  "vehicle",
+  "barangay",
+] as const;
 
 export default function RecentReportsTable({
   reports,
-  analytics,
-  reportTypeFilter,
+  filters,
+  schedules,
+  complaints,
+  routes,
+  vehicleMaintenance,
 }: Props) {
   const [page, setPage] = useState(1);
+  const [exportError, setExportError] = useState<string | null>(null);
+
+  const exportData = { schedules, complaints, routes, vehicleMaintenance };
+
+  function exportPdf(report: GeneratedReport) {
+    setExportError(null);
+    try {
+      exportReportPdf(report, exportData);
+    } catch (error) {
+      setExportError(
+        error instanceof Error ? error.message : "Could not open the PDF report."
+      );
+    }
+  }
+
+  function exportExcel(report: GeneratedReport) {
+    setExportError(null);
+    try {
+      exportReportExcel(report, exportData);
+    } catch (error) {
+      setExportError(
+        error instanceof Error ? error.message : "Could not download the Excel-compatible report."
+      );
+    }
+  }
 
   const filtered = useMemo(() => {
-    const list =
-      reportTypeFilter === "all"
-        ? reports
-        : reports.filter((r) => r.reportType === reportTypeFilter);
-    return [...list].sort(
+    if (filters.fromDate > filters.toDate) return [];
+
+    const list = reports
+      .filter((report) => {
+        if (!DISPLAYED_REPORT_TYPES.includes(
+          report.reportType as (typeof DISPLAYED_REPORT_TYPES)[number]
+        )) return false;
+        if (filters.reportType !== "all" && report.reportType !== filters.reportType) {
+          return false;
+        }
+        return (
+          report.fromDate <= filters.toDate &&
+          report.toDate >= filters.fromDate &&
+          report.barangayFilter === (filters.barangay === "all" ? null : filters.barangay)
+        );
+      })
+      .sort(
       (a, b) =>
         new Date(b.generatedAt).getTime() - new Date(a.generatedAt).getTime()
     );
-  }, [reports, reportTypeFilter]);
+    const latestByType = new Map<string, GeneratedReport>();
+    for (const report of list) {
+      if (!latestByType.has(report.reportType)) {
+        latestByType.set(report.reportType, report);
+      }
+    }
+
+    return DISPLAYED_REPORT_TYPES
+      .map((type) => latestByType.get(type))
+      .filter((report): report is GeneratedReport => Boolean(report));
+  }, [reports, filters]);
 
   const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
   const currentPage = Math.min(page, totalPages);
@@ -48,6 +113,12 @@ export default function RecentReportsTable({
       <div className="border-b border-gray-100 px-4 py-3">
         <h3 className="text-sm font-bold text-gray-900">Recent Reports</h3>
       </div>
+
+      {exportError && (
+        <p role="alert" className="border-b border-red-100 bg-red-50 px-4 py-2 text-sm text-red-700">
+          {exportError}
+        </p>
+      )}
 
       <div className="overflow-auto">
         <table className="w-full min-w-[720px] text-left text-sm">
@@ -118,14 +189,14 @@ export default function RecentReportsTable({
                       <div className="flex items-center gap-2">
                         <button
                           type="button"
-                          onClick={() => exportReportPdf(row, analytics)}
+                          onClick={() => exportPdf(row)}
                           className="rounded-md border border-eco-primary px-2.5 py-1 text-xs font-semibold text-eco-primary hover:bg-eco-light"
                         >
                           PDF
                         </button>
                         <button
                           type="button"
-                          onClick={() => exportReportExcel(row, analytics)}
+                          onClick={() => exportExcel(row)}
                           className="rounded-md border border-eco-primary px-2.5 py-1 text-xs font-semibold text-eco-primary hover:bg-eco-light"
                         >
                           Excel

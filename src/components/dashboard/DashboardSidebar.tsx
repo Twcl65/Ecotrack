@@ -28,6 +28,7 @@ const NAV = [
   { href: "/dashboard/announcement", label: "Announcement", icon: Megaphone },
   { href: "/dashboard/users", label: "User Management", icon: Users },
   { href: "/dashboard/collection", label: "Collection Monitoring", icon: Truck },
+  { href: "/dashboard/segregated-collection", label: "Collection Report", icon: Leaf },
   { href: "/dashboard/routes", label: "Route Management", icon: Route },
   { href: "/dashboard/settings", label: "Settings", icon: Settings },
 ];

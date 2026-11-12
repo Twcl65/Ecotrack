@@ -126,6 +126,13 @@ BEGIN
       NEW.content,
       jsonb_build_object('kind', 'announcement', 'id', NEW.id)
     );
+    PERFORM public.enqueue_push_event(
+      'driver',
+      NULL,
+      NEW.title,
+      NEW.content,
+      jsonb_build_object('kind', 'announcement', 'id', NEW.id)
+    );
   ELSIF NEW.audience = 'staff' THEN
     PERFORM public.enqueue_push_event(
       'administrator',

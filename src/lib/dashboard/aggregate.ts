@@ -9,8 +9,6 @@ import type { Schedule, ScheduleStatus } from "@/types/schedules";
 import { isOperationalSchedule } from "@/lib/collection/aggregate";
 import { formatIsoDateLocal, todayIso } from "@/lib/date";
 
-const AVG_WASTE_KG_PER_COLLECTION = 850;
-
 const STATUS_COLORS: Record<string, string> = {
   completed: "#056636",
   in_progress: "#3b82f6",
@@ -42,18 +40,18 @@ function mapScheduleStatusToChart(status: ScheduleStatus): CollectionStatusItem[
 export function computeDashboardKpis(
   schedules: Schedule[],
   totalBarangay: number,
-  totalComplaint: number
+  totalComplaint: number,
+  wasteCollectedKg: number
 ): DashboardKpis {
   const today = todayIso();
   const operational = schedules.filter(isOperationalSchedule);
   const todaySchedules = operational.filter((s) => s.date === today);
-  const completed = operational.filter((s) => s.status === "completed");
 
   return {
     todaysCollection: todaySchedules.length,
     totalBarangay,
     totalComplaint,
-    wasteCollectedKg: completed.length * AVG_WASTE_KG_PER_COLLECTION,
+    wasteCollectedKg,
   };
 }
 

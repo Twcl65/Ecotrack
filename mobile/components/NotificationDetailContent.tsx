@@ -11,10 +11,11 @@ type Props = {
 };
 
 export default function NotificationDetailContent({ module }: Props) {
-  const { title, details, timestamp } = useLocalSearchParams<{
+  const { title, details, timestamp, type } = useLocalSearchParams<{
     title?: string;
     details?: string;
     timestamp?: string;
+    type?: string;
   }>();
   const { colors } = useTheme();
   const styles = useMemo(() => createStyles(colors), [colors]);
@@ -32,7 +33,10 @@ export default function NotificationDetailContent({ module }: Props) {
           <Ionicons name="notifications" size={36} color={colors.primary} />
         </View>
         <Text style={styles.title}>{title ?? "Notification"}</Text>
-        {timestamp ? <Text style={styles.timestamp}>{timestamp}</Text> : null}
+        <View style={styles.metaRow}>
+          <Text style={styles.type}>{type ?? "Notification"}</Text>
+          {timestamp ? <Text style={styles.timestamp}>{timestamp}</Text> : null}
+        </View>
         <View style={styles.detailCard}>
           <Text style={styles.sectionTitle}>Details</Text>
           <Text style={styles.details}>{details ?? "No additional details."}</Text>
@@ -68,9 +72,27 @@ function createStyles(colors: ThemeColors) {
       fontWeight: "800",
       textAlign: "center",
     },
+    metaRow: {
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "center",
+      flexWrap: "wrap",
+      gap: spacing.sm,
+    },
+    type: {
+      color: colors.primary,
+      fontSize: fontSize.xs,
+      fontWeight: "700",
+      backgroundColor: colors.primaryLight,
+      paddingHorizontal: spacing.sm,
+      paddingVertical: spacing.xs,
+      borderRadius: radius.full,
+      overflow: "hidden",
+    },
     timestamp: {
       color: colors.textMuted,
       fontSize: fontSize.sm,
+      textAlign: "center",
     },
     detailCard: {
       alignSelf: "stretch",

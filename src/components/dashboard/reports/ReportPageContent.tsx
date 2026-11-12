@@ -9,20 +9,26 @@ import {
 import type { Complaint } from "@/types/complaint";
 import type { GeneratedReport, ReportFilters } from "@/types/reports";
 import type { Schedule } from "@/types/schedules";
+import type { Route } from "@/types/routes";
+import type { VehicleMaintenanceData } from "@/app/dashboard/report/vehicle-actions";
+import type { MonthlyCollectionReport } from "@/lib/segregated-collection/monthly-data";
 import RecentReportsTable from "./RecentReportsTable";
 import ReportBarangayChart from "./ReportBarangayChart";
 import ReportCollectionsChart from "./ReportCollectionsChart";
 import ReportKpiCards from "./ReportKpiCards";
 import ReportStatusChart from "./ReportStatusChart";
 import ReportTypeSelect from "./ReportTypeSelect";
+import VehicleReportTable from "./VehicleReportTable";
 
 type Props = {
   schedules: Schedule[];
+  routes: Route[];
+  vehicleMaintenance: VehicleMaintenanceData[];
   complaints: Complaint[];
   barangayOptions: string[];
   initialReports: GeneratedReport[];
   initialFilters: ReportFilters;
-  wasteKgBaseline: number;
+  collectionReports: MonthlyCollectionReport[];
   generatedBy: string;
 };
 
@@ -31,15 +37,18 @@ const inputClass =
 
 export default function ReportPageContent({
   schedules,
+  routes,
+  vehicleMaintenance,
   complaints,
   barangayOptions,
   initialReports,
   initialFilters,
-  wasteKgBaseline,
+  collectionReports,
   generatedBy,
 }: Props) {
   const [filters, setFilters] = useState<ReportFilters>(initialFilters);
   const [reports, setReports] = useState(initialReports);
+  const [maintenance, setMaintenance] = useState(vehicleMaintenance);
   const [generating, setGenerating] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -49,9 +58,9 @@ export default function ReportPageContent({
         schedules,
         complaints,
         filters,
-        wasteKgBaseline
+        collectionReports
       ),
-    [schedules, complaints, filters, wasteKgBaseline]
+    [schedules, complaints, filters, collectionReports]
   );
 
   async function handleGenerate() {
@@ -139,19 +148,34 @@ export default function ReportPageContent({
         )}
       </div>
 
-      <ReportKpiCards kpis={analytics.kpis} />
+      {filters.reportType !== "vehicle" && (
+        <ReportKpiCards kpis={analytics.kpis} />
+      )}
 
-      <div className="reports-charts-row">
-        <ReportCollectionsChart data={analytics.collectionsOverTime} />
-        <ReportBarangayChart data={analytics.topBarangays} />
-        <ReportStatusChart data={analytics.statusBreakdown} />
-      </div>
+      {filters.reportType === "vehicle" ? (
+        <VehicleReportTable
+          routes={routes}
+          schedules={schedules}
+          initialMaintenance={maintenance}
+          onMaintenanceChange={setMaintenance}
+          filters={filters}
+        />
+      ) : (
+        <div className="reports-charts-row">
+          <ReportCollectionsChart data={analytics.collectionsOverTime} />
+          <ReportBarangayChart data={analytics.topBarangays} />
+          <ReportStatusChart data={analytics.statusBreakdown} />
+        </div>
+      )}
 
       <RecentReportsTable
-        key={filters.reportType}
+        key={`${filters.reportType}:${filters.fromDate}:${filters.toDate}:${filters.barangay}`}
         reports={reports}
-        analytics={analytics}
-        reportTypeFilter={filters.reportType}
+        filters={filters}
+        schedules={schedules}
+        complaints={complaints}
+        routes={routes}
+        vehicleMaintenance={maintenance}
       />
     </div>
   );

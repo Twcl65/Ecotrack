@@ -1,9 +1,12 @@
 import ReportPageContent from "@/components/dashboard/reports/ReportPageContent";
 import { getBarangays } from "@/lib/barangay/data";
 import { getComplaints } from "@/lib/complaint/data";
-import { getGeneratedReports, getWasteKgBaseline } from "@/lib/reports/data";
-import { initialReportFilters } from "@/lib/reports/aggregate";
+import { getGeneratedReports } from "@/lib/reports/data";
+import { defaultReportFilters } from "@/lib/reports/aggregate";
 import { getSchedules } from "@/lib/schedules/data";
+import { getRoutes } from "@/lib/routes/data";
+import { getVehicleMaintenanceData } from "@/app/dashboard/report/vehicle-actions";
+import { getAllMonthlyCollectionReports } from "@/lib/segregated-collection/monthly-data";
 import { parseScheduleBarangays } from "@/lib/schedules/format";
 import { createClient } from "@/lib/supabase/server";
 
@@ -27,13 +30,15 @@ export default async function ReportPage() {
     user?.email?.split("@")[0] ||
     "Admin";
 
-  const [schedules, complaints, barangays, initialReports, wasteKgBaseline] =
+  const [schedules, routes, complaints, barangays, initialReports, collectionReports, vehicleMaintenance] =
     await Promise.all([
       getSchedules(),
+      getRoutes(),
       getComplaints(),
       getBarangays(),
       getGeneratedReports(),
-      getWasteKgBaseline(),
+      getAllMonthlyCollectionReports(),
+      getVehicleMaintenanceData(),
     ]);
 
   const barangayOptions = [
@@ -48,11 +53,13 @@ export default async function ReportPage() {
   return (
     <ReportPageContent
       schedules={schedules}
+      routes={routes}
+      vehicleMaintenance={vehicleMaintenance}
       complaints={complaints}
       barangayOptions={barangayOptions}
       initialReports={initialReports}
-      initialFilters={initialReportFilters(schedules, complaints)}
-      wasteKgBaseline={wasteKgBaseline}
+      initialFilters={defaultReportFilters()}
+      collectionReports={collectionReports}
       generatedBy={generatedBy}
     />
   );

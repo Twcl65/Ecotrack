@@ -207,6 +207,53 @@ export type CollectionRow = {
   completed_at: string | null;
 };
 
+export type DriverGarbageCollectionRow = {
+  id: string;
+  schedule_id: string | null;
+  schedule_date: string;
+  barangay: string;
+  driver_id: string;
+  materials: Json;
+  total_price: number;
+  created_at: string;
+};
+
+export type MonthlyCollectionReportRow = {
+  report_year: number;
+  month_number: number;
+  day_number: number;
+  total_kg: number;
+  updated_by: string;
+  created_at: string;
+  updated_at: string;
+};
+
+export type VehicleMaintenanceScheduleRow = {
+  route_id: string;
+  maintenance_schedule: string;
+  next_maintenance_date: string | null;
+  updated_by: string;
+  created_at: string;
+  updated_at: string;
+};
+
+export type VehicleMaintenanceHistoryRow = {
+  id: string;
+  route_id: string;
+  service_date: string;
+  description: string;
+  created_by: string;
+  created_at: string;
+};
+
+export type Json =
+  | string
+  | number
+  | boolean
+  | null
+  | { [key: string]: Json | undefined }
+  | Json[];
+
 export type AppSettingsRow = {
   id: number;
   system_name: string;
@@ -460,6 +507,45 @@ export type Database = {
           completed_at?: string | null;
         };
         Update: Partial<CollectionRow>;
+        Relationships: [];
+      };
+      driver_garbage_collections: {
+        Row: DriverGarbageCollectionRow;
+        Insert: Omit<
+          DriverGarbageCollectionRow,
+          "id" | "created_at"
+        > & {
+          id?: string;
+          created_at?: string;
+        };
+        Update: Partial<DriverGarbageCollectionRow>;
+        Relationships: [];
+      };
+      monthly_collection_reports: {
+        Row: MonthlyCollectionReportRow;
+        Insert: Omit<MonthlyCollectionReportRow, "created_at" | "updated_at"> & {
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: Partial<MonthlyCollectionReportRow>;
+        Relationships: [];
+      };
+      vehicle_maintenance_schedules: {
+        Row: VehicleMaintenanceScheduleRow;
+        Insert: Omit<VehicleMaintenanceScheduleRow, "created_at" | "updated_at"> & {
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: Partial<VehicleMaintenanceScheduleRow>;
+        Relationships: [];
+      };
+      vehicle_maintenance_history: {
+        Row: VehicleMaintenanceHistoryRow;
+        Insert: Omit<VehicleMaintenanceHistoryRow, "id" | "created_at"> & {
+          id?: string;
+          created_at?: string;
+        };
+        Update: Partial<VehicleMaintenanceHistoryRow>;
         Relationships: [];
       };
       app_settings: {

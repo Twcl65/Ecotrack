@@ -9,6 +9,7 @@ export type NotificationItem = {
   message: string;
   details: string;
   timestamp: string;
+  type: "Collection" | "Complaint";
   tone: "reminder" | "complaint";
 };
 
@@ -39,6 +40,7 @@ export function buildNotifications(
       complaint.issue,
     ].join("\n"),
     timestamp: `${complaint.dateLabel} · ${complaint.timeLabel}`,
+    type: "Complaint" as const,
     tone: "complaint" as const,
   }));
 
@@ -75,6 +77,7 @@ function scheduleNotification(
       `Status: ${schedule.status.replaceAll("_", " ")}`,
     ].join("\n"),
     timestamp: `${schedule.dateLabel} · ${schedule.timeStart ?? "Time TBD"}`,
+    type: "Collection" as const,
     tone: "reminder",
   };
 }
