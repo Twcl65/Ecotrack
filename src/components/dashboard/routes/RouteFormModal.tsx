@@ -11,6 +11,7 @@ import {
 import type { Route, RouteFormStop, RouteFormValues, RouteStatus } from "@/types/routes";
 import { ROUTE_STATUS_OPTIONS } from "@/types/routes";
 import { routeToFormValues } from "@/lib/routes/format";
+import type { VehicleOption } from "@/types/vehicles";
 import {
   defaultStopDescription,
   defaultStopName,
@@ -32,6 +33,7 @@ type Props = {
   route?: Route;
   driverOptions: string[];
   barangayOptions: string[];
+  vehicleOptions: VehicleOption[];
   open: boolean;
   onClose: () => void;
   onSuccess: (route: Route) => void;
@@ -89,6 +91,7 @@ export default function RouteFormModal({
   route,
   driverOptions,
   barangayOptions,
+  vehicleOptions,
   open,
   onClose,
   onSuccess,
@@ -96,6 +99,7 @@ export default function RouteFormModal({
   const [form, setForm] = useState<RouteFormValues>(() => formForRoute(route));
   const [drivers, setDrivers] = useState<string[]>(driverOptions);
   const [barangays, setBarangays] = useState<string[]>(barangayOptions);
+  const [vehicles, setVehicles] = useState<VehicleOption[]>(vehicleOptions);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -113,10 +117,26 @@ export default function RouteFormModal({
 
     let mounted = true;
     fetchRouteFormOptions()
-      .then(({ driverOptions: freshDrivers, barangayOptions: freshBarangays }) => {
+      .then(({
+        driverOptions: freshDrivers,
+        barangayOptions: freshBarangays,
+        vehicleOptions: freshVehicles,
+      }) => {
         if (mounted) {
           setDrivers(freshDrivers);
           setBarangays(freshBarangays);
+          setVehicles(freshVehicles);
+          setForm((current) => {
+            if (current.vehicleId) return current;
+            const assigned = freshVehicles.filter(
+              (vehicle) =>
+                vehicle.assignedDriver?.toLocaleLowerCase() ===
+                current.driverName.toLocaleLowerCase()
+            );
+            return assigned.length === 1
+              ? { ...current, vehicleId: assigned[0].vehicleCode }
+              : current;
+          });
         }
       })
       .catch((loadError: unknown) => {
@@ -202,6 +222,14 @@ export default function RouteFormModal({
   const primaryBarangay = selectedBarangays[0] ?? "";
 
   const driverChoices = withCurrentChoice(drivers, form.driverName);
+  const vehiclesForDriver = vehicles.filter(
+    (vehicle) =>
+      vehicle.assignedDriver?.toLocaleLowerCase() ===
+      form.driverName.toLocaleLowerCase()
+  );
+  const selectedVehicle = vehicles.find(
+    (vehicle) => vehicle.vehicleCode === form.vehicleId
+  );
   const barangayChoices = [...barangays];
   for (const name of selectedBarangays) {
     if (!barangayChoices.includes(name)) barangayChoices.unshift(name);
@@ -471,7 +499,19 @@ export default function RouteFormModal({
               <select
                 required
                 value={form.driverName}
-                onChange={(e) => setForm({ ...form, driverName: e.target.value })}
+                onChange={(e) => {
+                  const driverName = e.target.value;
+                  const assigned = vehicles.filter(
+                    (vehicle) =>
+                      vehicle.assignedDriver?.toLocaleLowerCase() ===
+                      driverName.toLocaleLowerCase()
+                  );
+                  setForm({
+                    ...form,
+                    driverName,
+                    vehicleId: assigned.length === 1 ? assigned[0].vehicleCode : "",
+                  });
+                }}
                 className={inputClass}
               >
                 <option value="">Select driver</option>
@@ -488,12 +528,39 @@ export default function RouteFormModal({
               )}
             </Field>
             <Field label="Vehicle ID">
-              <input
+              <select
                 value={form.vehicleId}
                 onChange={(e) => setForm({ ...form, vehicleId: e.target.value })}
-                placeholder="e.g. VEH-001"
                 className={inputClass}
-              />
+                disabled={vehiclesForDriver.length === 0 && !form.vehicleId}
+              >
+                <option value="">
+                  {vehiclesForDriver.length
+                    ? "Select vehicle"
+                    : "No registered vehicle assigned"}
+                </option>
+                {vehiclesForDriver.map((vehicle) => (
+                  <option key={vehicle.id} value={vehicle.vehicleCode}>
+                    {vehicle.vehicleCode} · {vehicle.model}
+                  </option>
+                ))}
+                {form.vehicleId &&
+                  !vehiclesForDriver.some(
+                    (vehicle) => vehicle.vehicleCode === form.vehicleId
+                  ) && (
+                    <option value={form.vehicleId}>
+                      {form.vehicleId} · legacy assignment
+                    </option>
+                  )}
+              </select>
+              <p className="mt-1 text-xs text-gray-500">
+                Model: {selectedVehicle?.model ?? "No registered vehicle model"}
+              </p>
+              {form.driverName && vehiclesForDriver.length === 0 && !form.vehicleId && (
+                <p className="mt-1 text-xs text-amber-700">
+                  Assign an active vehicle to this driver in Manage Vehicles first.
+                </p>
+              )}
             </Field>
           </div>
 

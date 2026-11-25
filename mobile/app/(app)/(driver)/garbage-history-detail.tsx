@@ -23,6 +23,16 @@ function formatPrice(value: number) {
   return `₱${value.toFixed(2)}`;
 }
 
+function formatCollectionTotals(sackCount: number, totalKg: number) {
+  const sacks = new Intl.NumberFormat(undefined, {
+    maximumFractionDigits: 0,
+  }).format(sackCount);
+  const kilograms = new Intl.NumberFormat(undefined, {
+    maximumFractionDigits: 2,
+  }).format(totalKg);
+  return `${sacks} Sack / ${kilograms} kg`;
+}
+
 function formatDate(value: string) {
   return new Date(`${value}T12:00:00`).toLocaleDateString("en-US", {
     weekday: "long",
@@ -98,32 +108,48 @@ export default function GarbageHistoryDetailScreen() {
               <Text style={styles.scheduleDate}>
                 {formatDate(record.scheduleDate)}
               </Text>
-            </View>
-
-            <Text style={styles.sectionTitle}>Collected materials</Text>
-            {record.materials.map((material) => (
-              <View key={material.id} style={styles.materialCard}>
-                <View style={styles.materialHeader}>
-                  <View style={styles.materialNameWrap}>
-                    <Text style={styles.materialName}>{material.name}</Text>
-                    <Text style={styles.materialQuantity}>
-                      {formatPrice(material.rate)} / {material.unit} -{" "}
-                      {material.quantity} {material.unit} collected
-                    </Text>
-                  </View>
-                  <Text style={styles.materialPrice}>
-                    {formatPrice(material.price)}
-                  </Text>
-                </View>
-              </View>
-            ))}
-
-            <View style={styles.totalCard}>
-              <Text style={styles.totalLabel}>Total Price</Text>
-              <Text style={styles.totalPrice}>
-                {formatPrice(record.totalPrice)}
+              <Text style={styles.modeLabel}>
+                {record.collectionMode === "input"
+                  ? "Input Collection"
+                  : "Calculate Collection"}
               </Text>
             </View>
+
+            <View style={styles.totalCard}>
+              <Text style={styles.totalLabel}>Collected</Text>
+              <Text style={styles.totalPrice}>
+                {formatCollectionTotals(record.sackCount, record.totalKg)}
+              </Text>
+            </View>
+
+            {record.materials.length > 0 ? (
+              <>
+                <Text style={styles.sectionTitle}>Collected materials</Text>
+                {record.materials.map((material) => (
+                  <View key={material.id} style={styles.materialCard}>
+                    <View style={styles.materialHeader}>
+                      <View style={styles.materialNameWrap}>
+                        <Text style={styles.materialName}>{material.name}</Text>
+                        <Text style={styles.materialQuantity}>
+                          {formatPrice(material.rate)} / {material.unit} -{" "}
+                          {material.quantity} {material.unit} collected
+                        </Text>
+                      </View>
+                      <Text style={styles.materialPrice}>
+                        {formatPrice(material.price)}
+                      </Text>
+                    </View>
+                  </View>
+                ))}
+
+                <View style={styles.totalCard}>
+                  <Text style={styles.totalLabel}>Total Price</Text>
+                  <Text style={styles.totalPrice}>
+                    {formatPrice(record.totalPrice)}
+                  </Text>
+                </View>
+              </>
+            ) : null}
 
             <Text style={styles.exportLabel}>Export this record</Text>
             <View style={styles.exportActions}>
@@ -170,6 +196,11 @@ function createStyles(colors: ThemeColors) {
       fontWeight: "800",
     },
     scheduleDate: { color: colors.textMuted, fontSize: fontSize.sm },
+    modeLabel: {
+      color: colors.primary,
+      fontSize: fontSize.sm,
+      fontWeight: "700",
+    },
     sectionTitle: {
       color: colors.text,
       fontSize: fontSize.md,

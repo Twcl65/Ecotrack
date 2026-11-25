@@ -126,7 +126,7 @@ export const REPORT_TYPE_OPTIONS: ReportTypeOption[] = [
   {
     value: "vehicle",
     label: "Vehicle Report",
-    description: "Vehicle distance and maintenance schedule/history",
+    description: "Managed vehicle odometer, assignment, and maintenance details",
     icon: Truck,
     iconBg: "bg-cyan-100",
     iconColor: "text-cyan-700",

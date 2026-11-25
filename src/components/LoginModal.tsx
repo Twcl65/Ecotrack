@@ -25,6 +25,8 @@ export default function LoginModal({
   const [rememberMe, setRememberMe] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [isForgotPassword, setIsForgotPassword] = useState(false);
+  const [resetSent, setResetSent] = useState(false);
 
   if (!isOpen) return null;
 
@@ -57,8 +59,48 @@ export default function LoginModal({
     router.refresh();
   }
 
+  async function handlePasswordReset(e: FormEvent) {
+    e.preventDefault();
+    const identifier = username.trim();
+    if (!identifier) {
+      setError("Enter your account email or username.");
+      return;
+    }
+
+    setLoading(true);
+    setError(null);
+    setResetSent(false);
+
+    try {
+      const email = await resolveLoginEmail(identifier);
+      const redirectTo = new URL(
+        "/auth/callback?next=/reset-password",
+        window.location.origin
+      ).toString();
+      const { error: resetError } = await createClient().auth.resetPasswordForEmail(
+        email,
+        { redirectTo }
+      );
+
+      if (resetError) {
+        setError(resetError.message);
+        return;
+      }
+
+      setResetSent(true);
+    } catch (resetError) {
+      setError(
+        resetError instanceof Error
+          ? resetError.message
+          : "Could not send a password reset email. Please try again."
+      );
+    } finally {
+      setLoading(false);
+    }
+  }
+
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-end">
+    <div className="fixed inset-0 z-50 flex items-center justify-center">
       <div
         className="absolute inset-0 bg-black/40 backdrop-blur-sm"
         onClick={onClose}
@@ -82,19 +124,24 @@ export default function LoginModal({
         <div className="px-6 py-6">
           <Logo size="sm" />
           <h2 className="mt-4 text-xl font-bold text-gray-900">
-            Administrator Login
+            {isForgotPassword ? "Reset your password" : "Administrator Login"}
           </h2>
           <p className="mt-1 text-sm text-gray-500">
-            Welcome back! Please login to continue.
+            {isForgotPassword
+              ? "Enter the email or username associated with your account."
+              : "Welcome back! Please login to continue."}
           </p>
 
-          <form onSubmit={handleSubmit} className="mt-6 space-y-4">
+          <form
+            onSubmit={isForgotPassword ? handlePasswordReset : handleSubmit}
+            className="mt-6 space-y-4"
+          >
             <div>
               <label
                 htmlFor="username"
                 className="mb-1.5 block text-sm font-medium text-gray-700"
               >
-                Username
+                {isForgotPassword ? "Account email or username" : "Username"}
               </label>
               <div className="relative">
                 <input
@@ -102,7 +149,11 @@ export default function LoginModal({
                   type="text"
                   value={username}
                   onChange={(e) => setUsername(e.target.value)}
-                  placeholder="Enter your username"
+                  placeholder={
+                    isForgotPassword
+                      ? "Enter your email or username"
+                      : "Enter your username"
+                  }
                   required
                   className="w-full rounded-lg border border-gray-200 py-2.5 pl-4 pr-10 text-sm outline-none transition focus:border-eco-primary focus:ring-2 focus:ring-eco-primary/20"
                 />
@@ -110,7 +161,7 @@ export default function LoginModal({
               </div>
             </div>
 
-            <div>
+            {!isForgotPassword && <div>
               <label
                 htmlFor="password"
                 className="mb-1.5 block text-sm font-medium text-gray-700"
@@ -141,9 +192,9 @@ export default function LoginModal({
                   )}
                 </button>
               </div>
-            </div>
+            </div>}
 
-            <div className="flex items-center justify-between">
+            {!isForgotPassword && <div className="flex items-center justify-between">
               <label className="flex cursor-pointer items-center gap-2 text-sm text-gray-600">
                 <input
                   type="checkbox"
@@ -155,15 +206,28 @@ export default function LoginModal({
               </label>
               <button
                 type="button"
+                onClick={() => {
+                  setIsForgotPassword(true);
+                  setError(null);
+                  setResetSent(false);
+                }}
                 className="text-sm font-medium text-eco-primary hover:underline"
               >
                 Forgot Password?
               </button>
-            </div>
+            </div>}
 
             {error && (
               <p className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-600">
                 {error}
+              </p>
+            )}
+            {isForgotPassword && resetSent && (
+              <p
+                role="status"
+                className="rounded-lg bg-green-50 px-3 py-2 text-sm text-green-700"
+              >
+                If an account matches those details, a password reset link will be sent to its email.
               </p>
             )}
 
@@ -172,16 +236,32 @@ export default function LoginModal({
               disabled={loading}
               className="w-full rounded-lg bg-eco-primary py-3 text-sm font-semibold text-white transition hover:bg-eco-dark disabled:cursor-not-allowed disabled:opacity-60"
             >
-              {loading ? "Logging in..." : "Login"}
+              {loading
+                ? isForgotPassword
+                  ? "Sending..."
+                  : "Logging in..."
+                : isForgotPassword
+                  ? "Send reset link"
+                  : "Login"}
             </button>
           </form>
 
           <button
             type="button"
-            onClick={onBackToRoles ?? onClose}
+            onClick={() => {
+              if (isForgotPassword) {
+                setIsForgotPassword(false);
+                setResetSent(false);
+                setError(null);
+              } else if (onBackToRoles) {
+                onBackToRoles();
+              } else {
+                onClose();
+              }
+            }}
             className="mt-4 text-sm text-gray-500 transition hover:text-eco-primary"
           >
-            ← Back to Role Selection
+            {isForgotPassword ? "← Back to Login" : "← Back to Role Selection"}
           </button>
         </div>
       </div>

@@ -7,6 +7,10 @@ import {
   saveMonthlyCollectionReport,
   type MonthlyCollectionReport,
 } from "@/lib/segregated-collection/monthly-data";
+import {
+  getReportLetterheadHtml,
+  reportLetterheadStyles,
+} from "@/lib/reports/letterhead";
 
 const MONTHS = [
   "January",
@@ -30,6 +34,23 @@ type Props = {
 
 function formatKg(value: number) {
   return new Intl.NumberFormat(undefined, { maximumFractionDigits: 2 }).format(value);
+}
+
+function formatCollectionTotals(totalSacks: number, totalKg: number) {
+  const formattedKg = `${formatKg(totalKg)} kg`;
+  return totalSacks > 0
+    ? `${new Intl.NumberFormat(undefined, { maximumFractionDigits: 0 }).format(totalSacks)} Sack / ${formattedKg}`
+    : formattedKg;
+}
+
+function sumCollectionReports(reports: MonthlyCollectionReport[]) {
+  return reports.reduce(
+    (totals, report) => ({
+      totalSacks: totals.totalSacks + report.totalSacks,
+      totalKg: totals.totalKg + report.totalKg,
+    }),
+    { totalSacks: 0, totalKg: 0 }
+  );
 }
 
 function escapeCsv(value: string) {
@@ -56,6 +77,7 @@ export default function SegregatedCollectionPageContent({
   const [dialogOpen, setDialogOpen] = useState(false);
   const [selectedMonth, setSelectedMonth] = useState("1");
   const [selectedDay, setSelectedDay] = useState("1");
+  const [sacks, setSacks] = useState("0");
   const [kilograms, setKilograms] = useState("");
   const [saving, setSaving] = useState(false);
   const [errorMessage, setErrorMessage] = useState("");
@@ -78,44 +100,60 @@ export default function SegregatedCollectionPageContent({
     return MONTHS.map((month, index) => ({ month, monthNumber: index + 1 }))
       .filter(({ month }) => month.toLowerCase().includes(query));
   }, [monthSearch]);
-  const totalKg = useMemo(
-    () =>
-      visibleMonths.reduce(
-        (total, { monthNumber }) =>
-          total +
-          reports
-            .filter((report) => report.monthNumber === monthNumber)
-            .reduce((monthTotal, report) => monthTotal + report.totalKg, 0),
-        0
-      ),
+  const visibleTotals = useMemo(
+    () => {
+      const visibleMonthNumbers = new Set(
+        visibleMonths.map(({ monthNumber }) => monthNumber)
+      );
+      return sumCollectionReports(
+        reports.filter((report) => visibleMonthNumbers.has(report.monthNumber))
+      );
+    },
     [reports, visibleMonths]
   );
+  const totalKg = visibleTotals.totalKg;
+  const totalSacks = visibleTotals.totalSacks;
 
   function getExportRows() {
     const dailyTotals = Array.from({ length: 31 }, (_, index) => {
       const day = index + 1;
-      let dayTotal = 0;
+      let dayTotalKg = 0;
+      let dayTotalSacks = 0;
       const monthValues = visibleMonths.map(({ monthNumber }) => {
         const maxDay = new Date(Date.UTC(reportYear, monthNumber, 0)).getUTCDate();
-        const amount =
+        const report =
           day <= maxDay
-            ? reportsByDate.get(`${monthNumber}-${day}`)?.totalKg ?? null
+            ? reportsByDate.get(`${monthNumber}-${day}`)
             : null;
-        if (amount !== null) dayTotal += amount;
-        return amount;
+        if (report) {
+          dayTotalKg += report.totalKg;
+          dayTotalSacks += report.totalSacks;
+        }
+        return report
+          ? formatCollectionTotals(report.totalSacks, report.totalKg)
+          : "";
       });
-      return [String(day), ...monthValues.map((amount) => amount === null ? "" : String(amount)), String(dayTotal)];
+      const dayTotal =
+        dayTotalKg || dayTotalSacks
+          ? formatCollectionTotals(dayTotalSacks, dayTotalKg)
+          : "";
+      return [String(day), ...monthValues, dayTotal];
     });
-    const monthTotals = visibleMonths.map(({ monthNumber }) =>
-      reports
-        .filter((report) => report.monthNumber === monthNumber)
-        .reduce((total, report) => total + report.totalKg, 0)
-    );
+    const monthTotals = visibleMonths.map(({ monthNumber }) => {
+      const totals = sumCollectionReports(
+        reports.filter((report) => report.monthNumber === monthNumber)
+      );
+      return formatCollectionTotals(totals.totalSacks, totals.totalKg);
+    });
     return {
-      headers: ["Date", ...visibleMonths.map(({ month }) => month), "Total (kg)"],
+      headers: ["Date", ...visibleMonths.map(({ month }) => month), "Total (Sack / kg)"],
       rows: [
         ...dailyTotals,
-        ["Total (kg)", ...monthTotals.map(String), String(totalKg)],
+        [
+          "Total (Sack / kg)",
+          ...monthTotals,
+          formatCollectionTotals(totalSacks, totalKg),
+        ],
       ],
     };
   }
@@ -124,6 +162,13 @@ export default function SegregatedCollectionPageContent({
     setExportError("");
     const table = getExportRows();
     const csvRows = [
+      ["Republic of the Philippines"],
+      ["Province of Misamis Oriental"],
+      ["MUNICIPALITY OF JASAAN"],
+      ["-o0o-"],
+      ["MUNICIPAL ENVIRONMENT AND NATURAL RESOURCES OFFICE"],
+      ["Email: menrojasaan@gmail.com / Facebook: Menro Jasaan"],
+      [],
       [`Collection Report - ${reportYear}`],
       [`Months: ${visibleMonths.map(({ month }) => month).join(", ") || "None"}`],
       [],
@@ -156,36 +201,44 @@ export default function SegregatedCollectionPageContent({
       .map((row, rowIndex) => {
         const isTotalsRow = rowIndex === table.rows.length - 1;
         return `<tr class="${isTotalsRow ? "totals" : ""}">${row
-          .map((value, valueIndex) => {
-            if (valueIndex === 0 || !value) {
-              return `<td>${escapeHtml(value)}</td>`;
-            }
-            if (!isTotalsRow && valueIndex === row.length - 1 && Number(value) === 0) {
-              return "<td></td>";
-            }
-            return `<td>${escapeHtml(`${formatKg(Number(value))} kg`)}</td>`;
-          })
+          .map((value) => `<td>${escapeHtml(value)}</td>`)
           .join("")}</tr>`;
       })
       .join("");
+    const monthCount = visibleMonths.length;
+    const columnWidths = monthCount
+      ? [8, ...Array.from({ length: monthCount }, () => 78 / monthCount), 14]
+      : [36, 64];
+    const colgroup = `<colgroup>${columnWidths
+      .map((width) => `<col style="width:${width}%">`)
+      .join("")}</colgroup>`;
+    const generatedAt = new Date().toLocaleString();
 
     popup.document.write(`<!doctype html>
-<html><head><meta charset="utf-8"><title>Collection Report - ${reportYear}</title>
+<html><head><meta charset="utf-8"><title></title>
 <style>
+@page { size: letter landscape; margin: 0; }
 body { font: 12px Arial, sans-serif; color: #17211b; margin: 24px; }
+${reportLetterheadStyles}
 h1 { font-size: 20px; margin: 0 0 6px; }
 p { color: #59665e; margin: 0 0 16px; }
-table { width: 100%; border-collapse: collapse; }
-th, td { border: 1px solid #d6ded9; padding: 6px; text-align: right; white-space: nowrap; }
+table { width: 100%; table-layout: fixed; border-collapse: collapse; font-size: 9px; }
+th, td { border: 1px solid #d6ded9; padding: 4px; text-align: right; overflow-wrap: anywhere; }
 th:first-child, td:first-child { text-align: left; }
 th { background: #edf3ef; }
 .totals { font-weight: bold; background: #f0f7f3; }
-@media print { body { margin: 10mm; } }
+@media print {
+  body { margin: 12mm 12mm 18mm; }
+  .letterhead { break-inside: avoid; }
+  .report-footer { position: fixed; bottom: 5mm; left: 12mm; font-size: 9px; color: #59665e; }
+}
 </style></head>
 <body>
+${getReportLetterheadHtml()}
 <h1>Collection Report</h1>
-<p>Daily garbage collected in kilograms · ${reportYear}</p>
-<table><thead><tr>${headers}</tr></thead><tbody>${rows}</tbody></table>
+<p>Daily garbage collected by sacks and kilograms · ${reportYear}</p>
+<table>${colgroup}<thead><tr>${headers}</tr></thead><tbody>${rows}</tbody></table>
+<footer class="report-footer">${escapeHtml(generatedAt)} · Collection Report</footer>
 <script>window.addEventListener("load", () => window.print());</script>
 </body></html>`);
     popup.document.close();
@@ -247,6 +300,7 @@ th { background: #edf3ef; }
     const existing = reportsByDate.get(`${monthNumber}-${dayNumber}`);
     setSelectedMonth(String(monthNumber));
     setSelectedDay(String(dayNumber));
+    setSacks(existing ? String(existing.totalSacks) : "0");
     setKilograms(existing ? String(existing.totalKg) : "");
     setErrorMessage("");
     setDialogOpen(true);
@@ -258,22 +312,27 @@ th { background: #edf3ef; }
     const day = Math.min(selectedDayNumber, maxDay);
     setSelectedMonth(value);
     setSelectedDay(String(day));
-    setKilograms(reportsByDate.get(`${nextMonth}-${day}`)?.totalKg.toString() ?? "");
+    const report = reportsByDate.get(`${nextMonth}-${day}`);
+    setSacks(report ? String(report.totalSacks) : "0");
+    setKilograms(report?.totalKg.toString() ?? "");
     setErrorMessage("");
   }
 
   function changeDay(value: string) {
     setSelectedDay(value);
-    setKilograms(
-      reportsByDate
-        .get(`${selectedMonthNumber}-${Number(value)}`)
-        ?.totalKg.toString() ?? ""
-    );
+    const report = reportsByDate.get(`${selectedMonthNumber}-${Number(value)}`);
+    setSacks(report ? String(report.totalSacks) : "0");
+    setKilograms(report?.totalKg.toString() ?? "");
     setErrorMessage("");
   }
 
   async function saveReport() {
+    const sackCount = sacks.trim() ? Number(sacks) : 0;
     const value = Number(kilograms);
+    if (!Number.isInteger(sackCount) || sackCount < 0) {
+      setErrorMessage("Enter a valid whole number of sacks.");
+      return;
+    }
     if (!kilograms.trim() || !Number.isFinite(value) || value < 0) {
       setErrorMessage("Enter a valid collected amount in kilograms.");
       return;
@@ -286,6 +345,7 @@ th { background: #edf3ef; }
         reportYear,
         monthNumber: selectedMonthNumber,
         dayNumber: selectedDayNumber,
+        totalSacks: sackCount,
         totalKg: value,
       });
       setReports((current) => [
@@ -315,7 +375,7 @@ th { background: #edf3ef; }
         <div>
           <h1 className="text-xl font-bold text-gray-900">Collection Report</h1>
           <p className="mt-1 text-sm text-gray-500">
-            Monthly collected garbage totals for {reportYear}.
+            Monthly collected sack and garbage totals for {reportYear}.
           </p>
         </div>
         <div className="flex shrink-0 flex-wrap items-center gap-2">
@@ -361,7 +421,7 @@ th { background: #edf3ef; }
           <div>
             <h2 className="font-semibold text-gray-900">Daily garbage collected</h2>
             <p className="text-xs text-gray-500">
-              Daily amounts are shown in kilograms for {reportYear}.
+              Daily amounts are shown as sacks and kilograms for {reportYear}.
             </p>
           </div>
           <div className="flex w-full flex-wrap items-center gap-2 sm:w-auto sm:flex-nowrap">
@@ -412,7 +472,7 @@ th { background: #edf3ef; }
                   </th>
                 ))}
                 <th className="border-b border-gray-200 bg-emerald-50 px-3 py-3 text-right text-emerald-800">
-                  Total (kg)
+                  Total (Sack / kg)
                 </th>
               </tr>
             </thead>
@@ -423,19 +483,23 @@ th { background: #edf3ef; }
                     {day}
                   </th>
                   {(() => {
-                    let dayTotal = 0;
+                    let dayTotalKg = 0;
+                    let dayTotalSacks = 0;
                     const monthCells = visibleMonths.map(({ monthNumber }) => {
                       const maxDay = new Date(Date.UTC(reportYear, monthNumber, 0)).getUTCDate();
                       const report = day <= maxDay
                         ? reportsByDate.get(`${monthNumber}-${day}`)
                         : undefined;
-                      if (report) dayTotal += report.totalKg;
+                      if (report) {
+                        dayTotalKg += report.totalKg;
+                        dayTotalSacks += report.totalSacks;
+                      }
                       return (
                         <td
                           key={monthNumber}
                           className="whitespace-nowrap border-r border-gray-100 px-3 py-3 text-right tabular-nums text-gray-800"
                         >
-                          {day > maxDay ? "—" : report ? `${formatKg(report.totalKg)} kg` : ""}
+                          {day > maxDay ? "—" : report ? formatCollectionTotals(report.totalSacks, report.totalKg) : ""}
                         </td>
                       );
                     });
@@ -443,7 +507,9 @@ th { background: #edf3ef; }
                       <>
                         {monthCells}
                         <td className="bg-emerald-50/40 px-3 py-3 text-right tabular-nums font-medium text-emerald-800">
-                          {dayTotal ? `${formatKg(dayTotal)} kg` : ""}
+                          {dayTotalKg || dayTotalSacks
+                            ? formatCollectionTotals(dayTotalSacks, dayTotalKg)
+                            : ""}
                         </td>
                       </>
                     );
@@ -452,23 +518,23 @@ th { background: #edf3ef; }
               ))}
               <tr className="border-t-2 border-gray-200 bg-gray-50 font-semibold">
                 <th className="sticky left-0 border-r border-gray-200 bg-gray-50 px-3 py-3 text-left text-gray-800">
-                  Total (kg)
+                  Total (Sack / kg)
                 </th>
                 {visibleMonths.map(({ monthNumber }) => {
-                  const monthTotal = reports
-                    .filter((report) => report.monthNumber === monthNumber)
-                    .reduce((total, report) => total + report.totalKg, 0);
+                  const monthTotals = sumCollectionReports(
+                    reports.filter((report) => report.monthNumber === monthNumber)
+                  );
                   return (
                     <td
                       key={monthNumber}
                       className="border-r border-gray-200 px-3 py-3 text-right tabular-nums text-gray-800"
                     >
-                      {formatKg(monthTotal)} kg
+                      {formatCollectionTotals(monthTotals.totalSacks, monthTotals.totalKg)}
                     </td>
                   );
                 })}
                 <td className="bg-emerald-50 px-3 py-3 text-right tabular-nums text-emerald-800">
-                  {formatKg(totalKg)} kg
+                  {formatCollectionTotals(totalSacks, totalKg)}
                 </td>
               </tr>
             </tbody>
@@ -500,7 +566,7 @@ th { background: #edf3ef; }
                   Add a collection report
                 </h2>
                 <p className="mt-1 text-sm text-gray-500">
-                  Enter the collected amount for a month in {reportYear}.
+                  Enter the sacks and kilograms collected on a date in {reportYear}.
                 </p>
               </div>
               <button
@@ -551,6 +617,23 @@ th { background: #edf3ef; }
                     )
                   )}
                 </select>
+              </label>
+
+              <label className="block">
+                <span className="mb-1.5 block text-sm font-medium text-gray-700">
+                  Sacks collected
+                </span>
+                <input
+                  type="number"
+                  min="0"
+                  step="1"
+                  inputMode="numeric"
+                  value={sacks}
+                  onChange={(event) => setSacks(event.target.value)}
+                  disabled={saving}
+                  placeholder="Enter sacks"
+                  className="w-full rounded-lg border border-gray-200 bg-white px-3 py-2.5 text-sm text-gray-800 outline-none focus:border-eco-primary focus:ring-2 focus:ring-eco-primary/20"
+                />
               </label>
 
               <label className="block">

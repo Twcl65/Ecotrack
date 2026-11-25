@@ -3,14 +3,18 @@ import type { Complaint } from "@/types/complaint";
 import type { GeneratedReport } from "@/types/reports";
 import type { Route } from "@/types/routes";
 import type { Schedule } from "@/types/schedules";
-import type { VehicleMaintenanceData } from "@/app/dashboard/report/vehicle-actions";
-import { getVehicleDriverReportRows } from "@/lib/reports/vehicle-report";
+import type { Vehicle } from "@/types/vehicles";
+import { getVehicleReportRows } from "@/lib/reports/vehicle-report";
+import {
+  getReportLetterheadHtml,
+  reportLetterheadStyles,
+} from "@/lib/reports/letterhead";
 
 type ReportExportData = {
   schedules: Schedule[];
   complaints: Complaint[];
   routes: Route[];
-  vehicleMaintenance: VehicleMaintenanceData[];
+  vehicles: Vehicle[];
 };
 
 type ExportTable = {
@@ -21,14 +25,6 @@ type ExportTable = {
 
 function inReportRange(date: string, report: GeneratedReport) {
   return date >= report.fromDate && date <= report.toDate;
-}
-
-function formatDuration(totalMinutes: number) {
-  const hours = Math.floor(totalMinutes / 60);
-  const minutes = totalMinutes % 60;
-  if (hours === 0) return `${minutes} min`;
-  if (minutes === 0) return `${hours} hr`;
-  return `${hours} hr ${minutes} min`;
 }
 
 function scheduleMatchesReport(schedule: Schedule, report: GeneratedReport) {
@@ -173,10 +169,9 @@ function getReportTable(report: GeneratedReport, data: ReportExportData): Export
     }
 
     case "vehicle": {
-      const driverRows = getVehicleDriverReportRows(
-        data.routes,
+      const vehicleRows = getVehicleReportRows(
+        data.vehicles,
         schedules,
-        data.vehicleMaintenance,
         {
           fromDate: report.fromDate,
           toDate: report.toDate,
@@ -186,25 +181,41 @@ function getReportTable(report: GeneratedReport, data: ReportExportData): Export
       return {
         title: "Vehicle Report",
         headers: [
-          "Driver",
-          "Completed schedules",
-          "Estimated kilometers (km)",
-          "Total travel time",
-          "Maintenance schedule",
-          "Last maintenance",
-          "Next maintenance",
-          "Maintenance history",
+          "Vehicle ID",
+          "Plate number",
+          "Vehicle type",
+          "Model",
+          "Assigned driver",
+          "Status",
+          "Completed collections",
+          "Actual distance (period km)",
+          "Current odometer (km)",
+          "Starting odometer (km)",
+          "Last maintenance date",
+          "Last service odometer (km)",
+          "Next maintenance date",
+          "Next service odometer (km)",
+          "Maintenance type",
         ],
-        rows: driverRows.map((row) => [
-          row.driver,
-          String(row.completedRuns),
-          row.estimatedKilometers.toFixed(1),
-          formatDuration(row.totalTravelMinutes),
-          row.maintenanceSchedules.join("; ") || "Not set",
-          row.lastMaintenanceDate || "—",
-          row.nextMaintenanceDate || "—",
-          row.history.map((record) => `${record.serviceDate}: ${record.description}`).join("; ") || "No history",
-        ]),
+        rows: vehicleRows.map(
+          ({ vehicle, completedSchedules, actualDistanceKm }) => [
+            vehicle.vehicleCode,
+            vehicle.plateNumber,
+            vehicle.vehicleType,
+            vehicle.model,
+            vehicle.assignedDriver || "—",
+            vehicle.status,
+            String(completedSchedules),
+            actualDistanceKm.toFixed(1),
+            vehicle.currentOdometerKm.toString(),
+            vehicle.startingOdometerKm.toString(),
+            vehicle.lastMaintenanceDate || "—",
+            vehicle.lastMaintenanceOdometerKm?.toString() || "—",
+            vehicle.nextMaintenanceDate || "—",
+            vehicle.nextMaintenanceOdometerKm?.toString() || "—",
+            vehicle.maintenanceType || "Not set",
+          ]
+        ),
       };
     }
 
@@ -236,6 +247,13 @@ function safeFilename(report: GeneratedReport) {
 export function exportReportExcel(report: GeneratedReport, data: ReportExportData) {
   const table = getReportTable(report, data);
   const rows = [
+    ["Republic of the Philippines"],
+    ["Province of Misamis Oriental"],
+    ["MUNICIPALITY OF JASAAN"],
+    ["-o0o-"],
+    ["MUNICIPAL ENVIRONMENT AND NATURAL RESOURCES OFFICE"],
+    ["Email: menrojasaan@gmail.com / Facebook: Menro Jasaan"],
+    [],
     [table.title],
     [`Period: ${report.periodLabel}`],
     [`Barangay: ${report.barangayFilter || "All"}`],
@@ -262,26 +280,36 @@ export function exportReportPdf(report: GeneratedReport, data: ReportExportData)
   const rows = table.rows
     .map((row) => `<tr>${row.map((value) => `<td>${escapeHtml(value)}</td>`).join("")}</tr>`)
     .join("");
+  const pageOrientation =
+    report.reportType === "vehicle" ? "landscape" : "portrait";
   const popup = window.open("", "_blank");
   if (!popup) {
     throw new Error("Allow pop-ups to open the report print view.");
   }
 
   popup.document.write(`<!doctype html>
-<html><head><meta charset="utf-8"><title>${escapeHtml(table.title)}</title>
+<html><head><meta charset="utf-8"><title></title>
 <style>
+@page { size: letter ${pageOrientation}; margin: 0; }
 body { font: 12px Arial, sans-serif; color: #17211b; margin: 28px; }
+${reportLetterheadStyles}
 h1 { font-size: 20px; margin: 0 0 8px; }
 .meta { color: #59665e; margin: 0 0 18px; }
-table { width: 100%; border-collapse: collapse; }
-th, td { border: 1px solid #d6ded9; padding: 7px; text-align: left; vertical-align: top; }
+table { width: 100%; table-layout: fixed; border-collapse: collapse; }
+th, td { border: 1px solid #d6ded9; padding: 7px; text-align: left; vertical-align: top; overflow-wrap: anywhere; }
 th { background: #edf3ef; }
-@media print { body { margin: 10mm; } }
+@media print {
+  body { margin: 12mm 12mm 18mm; }
+  .letterhead { break-inside: avoid; }
+  .report-footer { position: fixed; bottom: 5mm; left: 12mm; font-size: 9px; color: #59665e; }
+}
 </style></head>
 <body>
+${getReportLetterheadHtml()}
 <h1>${escapeHtml(table.title)}</h1>
-<p class="meta">${escapeHtml(report.periodLabel)} · Generated by ${escapeHtml(report.generatedBy)} · ${escapeHtml(report.dateLabel)} ${escapeHtml(report.timeLabel)}${report.barangayFilter ? ` · ${escapeHtml(report.barangayFilter)}` : ""}</p>
+<p class="meta">${escapeHtml(report.periodLabel)} · Generated by ${escapeHtml(report.generatedBy)}${report.barangayFilter ? ` · ${escapeHtml(report.barangayFilter)}` : ""}</p>
 <table><thead><tr>${headers}</tr></thead><tbody>${rows || `<tr><td colspan="${table.headers.length}">No records match this report.</td></tr>`}</tbody></table>
+<footer class="report-footer">${escapeHtml(report.dateLabel)} ${escapeHtml(report.timeLabel)} · ${escapeHtml(table.title)}</footer>
 <script>window.addEventListener("load", () => window.print());</script>
 </body></html>`);
   popup.document.close();

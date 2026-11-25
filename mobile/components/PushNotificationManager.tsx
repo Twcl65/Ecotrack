@@ -112,6 +112,11 @@ export default function PushNotificationManager() {
         return;
       }
 
+      if (kind === "vehicle_maintenance" && isDriver) {
+        router.push("/(app)/(driver)/vehicle" as never);
+        return;
+      }
+
       router.push({
         pathname: isDriver
           ? "/(app)/(driver)/notification-detail"

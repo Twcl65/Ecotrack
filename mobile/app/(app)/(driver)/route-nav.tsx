@@ -39,6 +39,7 @@ import {
 import { fetchSchedules, type ScheduleItem } from "@/lib/data/schedules";
 import {
   publishDriverLocation,
+  recordCollectionGpsPoint,
   stopDriverLocationTracking,
   type DriverLocation,
 } from "@/lib/data/tracking";
@@ -217,6 +218,13 @@ export default function RouteNavScreen() {
         }
 
         const position = ready.location;
+        const distanceError = await recordCollectionGpsPoint({
+          scheduleId,
+          latitude: position.coords.latitude,
+          longitude: position.coords.longitude,
+          accuracy: position.coords.accuracy,
+          recordedAt: new Date(position.timestamp).toISOString(),
+        });
         setLiveLocation({
           scheduleId,
           driverId,
@@ -238,7 +246,9 @@ export default function RouteNavScreen() {
         });
         if (active) {
           setGpsStatus(
-            initialPublishError
+            distanceError
+              ? `GPS is active, but vehicle distance could not be recorded: ${distanceError}`
+              : initialPublishError
               ? `GPS is active, but location could not be shared: ${initialPublishError}`
               : "Live GPS tracking is on."
           );
@@ -264,6 +274,16 @@ export default function RouteNavScreen() {
                 isTracking: true,
               };
               setLiveLocation(updatedLocation);
+              const distanceError = await recordCollectionGpsPoint({
+                scheduleId,
+                latitude: position.coords.latitude,
+                longitude: position.coords.longitude,
+                accuracy: position.coords.accuracy,
+                recordedAt: updatedLocation.updatedAt,
+              });
+              if (distanceError) {
+                throw new Error(`Vehicle distance could not be recorded: ${distanceError}`);
+              }
               const publishError = await publishDriverLocation({
                 scheduleId,
                 driverId,
@@ -285,8 +305,8 @@ export default function RouteNavScreen() {
               if (active) {
                 setGpsStatus(
                   publishError instanceof Error
-                    ? `GPS is active, but location could not be shared: ${publishError.message}`
-                    : "GPS is active, but location could not be shared."
+                    ? `GPS update failed: ${publishError.message}`
+                    : "GPS update failed."
                 );
               }
             }

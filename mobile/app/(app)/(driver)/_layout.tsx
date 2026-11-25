@@ -13,6 +13,7 @@ export default function DriverLayout() {
       <Stack.Screen name="announcement-detail" />
       <Stack.Screen name="notification-detail" />
       <Stack.Screen name="profile" />
+      <Stack.Screen name="vehicle" />
       <Stack.Screen name="settings" />
       <Stack.Screen name="about" />
       <Stack.Screen name="help-support" />

@@ -233,9 +233,24 @@ html {
   max-height: 100%;
 }
 
+.vehicles-page {
+  min-height: 0;
+  max-height: 100%;
+}
+
+.vehicles-kpi-row {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 0.625rem;
+}
+
 @media (max-width: 1024px) {
   .users-kpi-row {
     grid-template-columns: repeat(3, 1fr);
+  }
+
+  .vehicles-kpi-row {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }
 

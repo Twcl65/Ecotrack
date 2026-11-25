@@ -81,3 +81,20 @@ export async function stopDriverLocationTracking(
     .eq("schedule_id", scheduleId);
   return error?.message ?? null;
 }
+
+export async function recordCollectionGpsPoint(params: {
+  scheduleId: string;
+  latitude: number;
+  longitude: number;
+  accuracy: number | null;
+  recordedAt: string;
+}): Promise<string | null> {
+  const { error } = await supabase.rpc("record_collection_gps_point", {
+    p_schedule_id: params.scheduleId,
+    p_latitude: params.latitude,
+    p_longitude: params.longitude,
+    p_accuracy: params.accuracy,
+    p_recorded_at: params.recordedAt,
+  });
+  return error?.message ?? null;
+}

@@ -45,6 +45,9 @@ function RootNavigator() {
     const inAuth = root === "(auth)";
     const inApp = root === "(app)";
     const onWelcome = (segments as string[])[0] === "index";
+    const onPasswordReset = (segments as string[]).includes("reset-password");
+
+    if (onPasswordReset) return;
 
     if (!session) {
       if (inApp) {

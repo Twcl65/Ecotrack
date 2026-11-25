@@ -17,6 +17,7 @@ import ArchivedBadge from "../ArchivedBadge";
 import RouteStatusBadge from "./RouteStatusBadge";
 import { todayIso } from "@/lib/date";
 import type { Route, RouteStatus } from "@/types/routes";
+import type { VehicleDisplayOption } from "@/types/vehicles";
 import {
   ROUTE_STATUS_OPTIONS,
   formatDistance,
@@ -28,6 +29,7 @@ type Props = {
   routes: Route[];
   driverOptions: string[];
   barangayOptions: string[];
+  vehicleDisplayOptions: VehicleDisplayOption[];
   onAdd: () => void;
   onView: (route: Route) => void;
   onEdit: (route: Route) => void;
@@ -48,6 +50,7 @@ export default function RouteTable({
   routes,
   driverOptions,
   barangayOptions,
+  vehicleDisplayOptions,
   onAdd,
   onView,
   onEdit,
@@ -61,6 +64,16 @@ export default function RouteTable({
   const [barangayFilter, setBarangayFilter] = useState("all");
   const [dateFilter, setDateFilter] = useState(todayIso());
   const [page, setPage] = useState(1);
+  const vehicleByCode = useMemo(
+    () =>
+      new Map(
+        vehicleDisplayOptions.map((vehicle) => [
+          vehicle.vehicleCode.trim().toUpperCase(),
+          vehicle,
+        ])
+      ),
+    [vehicleDisplayOptions]
+  );
 
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
@@ -83,15 +96,19 @@ export default function RouteTable({
         if (!hay.includes(barangayFilter.toLowerCase())) return false;
       }
       if (!q) return true;
+      const vehicle = vehicleByCode.get(r.vehicleId.trim().toUpperCase());
       return (
         r.routeCode.toLowerCase().includes(q) ||
         r.name.toLowerCase().includes(q) ||
         r.area.toLowerCase().includes(q) ||
         r.barangay.toLowerCase().includes(q) ||
-        r.driverName.toLowerCase().includes(q)
+        r.driverName.toLowerCase().includes(q) ||
+        r.vehicleId.toLowerCase().includes(q) ||
+        (vehicle?.model.toLowerCase().includes(q) ?? false) ||
+        (vehicle?.plateNumber.toLowerCase().includes(q) ?? false)
       );
       });
-  }, [routes, search, statusFilter, driverFilter, barangayFilter]);
+  }, [routes, search, statusFilter, driverFilter, barangayFilter, vehicleByCode]);
 
   const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
   const currentPage = Math.min(page, totalPages);
@@ -179,7 +196,7 @@ export default function RouteTable({
 
       <div className="dashboard-card min-h-0 flex-1 overflow-hidden">
         <div className="overflow-x-auto">
-          <table className="w-full min-w-[900px] text-left text-sm">
+          <table className="w-full min-w-[1040px] text-left text-sm">
             <thead>
               <tr className="border-b border-gray-100 bg-gray-50/80 text-xs font-semibold uppercase tracking-wide text-gray-500">
                 <th className="px-4 py-3">Route</th>
@@ -187,6 +204,7 @@ export default function RouteTable({
                 <th className="px-4 py-3">Distance</th>
                 <th className="px-4 py-3">Est. Time</th>
                 <th className="px-4 py-3">Driver</th>
+                <th className="px-4 py-3">Vehicle</th>
                 <th className="px-4 py-3">Status</th>
                 <th className="px-4 py-3 text-center">Action</th>
               </tr>
@@ -194,74 +212,95 @@ export default function RouteTable({
             <tbody>
               {pageItems.length === 0 ? (
                 <tr>
-                  <td colSpan={7} className="px-4 py-10 text-center text-gray-500">
+                  <td colSpan={8} className="px-4 py-10 text-center text-gray-500">
                     No routes found.
                   </td>
                 </tr>
               ) : (
-                pageItems.map((route) => (
-                  <tr
-                    key={route.id}
-                    className="border-b border-gray-50 hover:bg-gray-50/60"
-                  >
-                    <td className="px-4 py-3">
-                      <div className="flex items-center gap-2.5">
-                        <span
-                          className={`shrink-0 rounded-md px-2 py-0.5 text-xs font-semibold ${routeCodeColor(route.routeCode)}`}
-                        >
-                          {route.routeCode}
+                pageItems.map((route) => {
+                  const vehicle = vehicleByCode.get(
+                    route.vehicleId.trim().toUpperCase()
+                  );
+                  return (
+                    <tr
+                      key={route.id}
+                      className="border-b border-gray-50 hover:bg-gray-50/60"
+                    >
+                      <td className="px-4 py-3">
+                        <div className="flex items-center gap-2.5">
+                          <span
+                            className={`shrink-0 rounded-md px-2 py-0.5 text-xs font-semibold ${routeCodeColor(route.routeCode)}`}
+                          >
+                            {route.routeCode}
+                          </span>
+                          <div className="min-w-0">
+                            <p className="font-medium text-gray-900">{routeTitle(route)}</p>
+                            <p className="truncate text-xs text-gray-500">{route.area}</p>
+                          </div>
+                        </div>
+                      </td>
+                      <td className="px-4 py-3 text-gray-700">{route.barangay}</td>
+                      <td className="px-4 py-3">
+                        <span className="inline-flex items-center gap-1.5 text-gray-700">
+                          <RouteIcon className="h-3.5 w-3.5 text-gray-400" />
+                          {formatDistance(route.distanceKm)}
                         </span>
-                        <div className="min-w-0">
-                          <p className="font-medium text-gray-900">{routeTitle(route)}</p>
-                          <p className="truncate text-xs text-gray-500">{route.area}</p>
+                      </td>
+                      <td className="px-4 py-3">
+                        <span className="inline-flex items-center gap-1.5 text-gray-700">
+                          <Clock className="h-3.5 w-3.5 text-gray-400" />
+                          {formatEstimatedTime(route.estimatedMinutes)}
+                        </span>
+                      </td>
+                      <td className="px-4 py-3">
+                        <div className="flex items-center gap-2">
+                          <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-gray-100">
+                            <User className="h-4 w-4 text-gray-500" />
+                          </div>
+                          <div>
+                            <p className="font-medium text-gray-900">{route.driverName}</p>
+                          </div>
                         </div>
-                      </div>
-                    </td>
-                    <td className="px-4 py-3 text-gray-700">{route.barangay}</td>
-                    <td className="px-4 py-3">
-                      <span className="inline-flex items-center gap-1.5 text-gray-700">
-                        <RouteIcon className="h-3.5 w-3.5 text-gray-400" />
-                        {formatDistance(route.distanceKm)}
-                      </span>
-                    </td>
-                    <td className="px-4 py-3">
-                      <span className="inline-flex items-center gap-1.5 text-gray-700">
-                        <Clock className="h-3.5 w-3.5 text-gray-400" />
-                        {formatEstimatedTime(route.estimatedMinutes)}
-                      </span>
-                    </td>
-                    <td className="px-4 py-3">
-                      <div className="flex items-center gap-2">
-                        <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-gray-100">
-                          <User className="h-4 w-4 text-gray-500" />
+                      </td>
+                      <td className="px-4 py-3">
+                        {route.vehicleId ? (
+                          <>
+                            <p className="font-medium text-gray-900">
+                              {route.vehicleId}
+                            </p>
+                            <p className="text-xs text-gray-500">
+                              {vehicle
+                                ? `${vehicle.model} · ${vehicle.plateNumber}`
+                                : "Vehicle details unavailable"}
+                            </p>
+                          </>
+                        ) : (
+                          <span className="text-gray-500">Not assigned</span>
+                        )}
+                      </td>
+                      <td className="px-4 py-3">
+                        {route.archivedAt ? (
+                          <ArchivedBadge />
+                        ) : (
+                          <RouteStatusBadge status={route.status} />
+                        )}
+                      </td>
+                      <td className="px-4 py-3">
+                        <div className="flex items-center justify-center gap-1">
+                          <IconButton label="View" onClick={() => onView(route)} color="text-blue-600">
+                            <Eye className="h-4 w-4" />
+                          </IconButton>
+                          <IconButton label="Edit" onClick={() => onEdit(route)} color="text-emerald-600" disabled={Boolean(route.archivedAt)}>
+                            <Pencil className="h-4 w-4" />
+                          </IconButton>
+                          <IconButton label="Archive" onClick={() => onDelete(route)} color="text-gray-500" disabled={Boolean(route.archivedAt)}>
+                            <Archive className="h-4 w-4" />
+                          </IconButton>
                         </div>
-                        <div>
-                          <p className="font-medium text-gray-900">{route.driverName}</p>
-                        </div>
-                      </div>
-                    </td>
-                    <td className="px-4 py-3">
-                      {route.archivedAt ? (
-                        <ArchivedBadge />
-                      ) : (
-                        <RouteStatusBadge status={route.status} />
-                      )}
-                    </td>
-                    <td className="px-4 py-3">
-                      <div className="flex items-center justify-center gap-1">
-                        <IconButton label="View" onClick={() => onView(route)} color="text-blue-600">
-                          <Eye className="h-4 w-4" />
-                        </IconButton>
-                        <IconButton label="Edit" onClick={() => onEdit(route)} color="text-emerald-600" disabled={Boolean(route.archivedAt)}>
-                          <Pencil className="h-4 w-4" />
-                        </IconButton>
-                        <IconButton label="Archive" onClick={() => onDelete(route)} color="text-gray-500" disabled={Boolean(route.archivedAt)}>
-                          <Archive className="h-4 w-4" />
-                        </IconButton>
-                      </div>
-                    </td>
-                  </tr>
-                ))
+                      </td>
+                    </tr>
+                  );
+                })
               )}
             </tbody>
           </table>

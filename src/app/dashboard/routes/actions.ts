@@ -5,6 +5,7 @@ import {
   getBarangayOptions,
   getDriverOptions,
 } from "@/lib/routes/data";
+import { getActiveVehicleOptions } from "@/lib/vehicles/data";
 import {
   buildFallbackStops,
   formValuesToRow,
@@ -42,6 +43,37 @@ function validateForm(values: RouteFormValues, isCreate = false): string | null 
       return `Stop ${i + 1} needs a name.`;
     }
   }
+  return null;
+}
+
+function normalizeDriver(value: string | null): string {
+  return (value ?? "").trim().replace(/\s+/g, " ").toLocaleLowerCase();
+}
+
+async function validateVehicleAssignment(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  values: RouteFormValues,
+  unchangedLegacyVehicle = false
+): Promise<string | null> {
+  if (!values.vehicleId.trim()) return null;
+
+  const { data: vehicle, error } = await supabase
+    .from("vehicles")
+    .select("vehicle_code, assigned_driver, status")
+    .eq("vehicle_code", values.vehicleId.trim().toUpperCase())
+    .maybeSingle();
+
+  if (error) return `Could not verify the selected vehicle: ${error.message}`;
+  if (!vehicle) {
+    return unchangedLegacyVehicle
+      ? null
+      : "Select a registered vehicle assigned to this driver.";
+  }
+  if (vehicle.status !== "active") return "Select an active vehicle.";
+  if (normalizeDriver(vehicle.assigned_driver) !== normalizeDriver(values.driverName)) {
+    return "The selected vehicle is not assigned to the selected driver.";
+  }
+
   return null;
 }
 
@@ -83,6 +115,9 @@ export async function createRoute(values: RouteFormValues): Promise<ActionResult
   if (err) return { success: false, error: err };
 
   const supabase = await createClient();
+  const vehicleError = await validateVehicleAssignment(supabase, values);
+  if (vehicleError) return { success: false, error: vehicleError };
+
   const { count } = await supabase
     .from("routes")
     .select("*", { count: "exact", head: true });
@@ -122,6 +157,25 @@ export async function updateRoute(
   if (err) return { success: false, error: err };
 
   const supabase = await createClient();
+  const { data: currentRoute, error: currentRouteError } = await supabase
+    .from("routes")
+    .select("vehicle_id, driver_name")
+    .eq("id", id)
+    .maybeSingle();
+  if (currentRouteError) {
+    return { success: false, error: currentRouteError.message };
+  }
+  if (!currentRoute) {
+    return { success: false, error: "Route was not found." };
+  }
+  const vehicleError = await validateVehicleAssignment(
+    supabase,
+    values,
+    currentRoute.vehicle_id === values.vehicleId &&
+      normalizeDriver(currentRoute.driver_name) === normalizeDriver(values.driverName)
+  );
+  if (vehicleError) return { success: false, error: vehicleError };
+
   const { error } = await supabase
     .from("routes")
     .update(formValuesToRow(values))
@@ -174,10 +228,12 @@ export async function updateRouteStatus(
 export async function fetchRouteFormOptions(): Promise<{
   driverOptions: string[];
   barangayOptions: string[];
+  vehicleOptions: Awaited<ReturnType<typeof getActiveVehicleOptions>>;
 }> {
-  const [driverOptions, barangayOptions] = await Promise.all([
+  const [driverOptions, barangayOptions, vehicleOptions] = await Promise.all([
     getDriverOptions(),
     getBarangayOptions(),
+    getActiveVehicleOptions(),
   ]);
-  return { driverOptions, barangayOptions };
+  return { driverOptions, barangayOptions, vehicleOptions };
 }

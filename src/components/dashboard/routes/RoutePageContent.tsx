@@ -8,17 +8,22 @@ import RouteKpiCards from "./RouteKpiCards";
 import RouteTable from "./RouteTable";
 import { computeRouteStats } from "@/lib/routes/stats";
 import type { Route } from "@/types/routes";
+import type { VehicleDisplayOption, VehicleOption } from "@/types/vehicles";
 
 type Props = {
   initialRoutes: Route[];
   driverOptions: string[];
   barangayOptions: string[];
+  vehicleOptions: VehicleOption[];
+  vehicleDisplayOptions: VehicleDisplayOption[];
 };
 
 export default function RoutePageContent({
   initialRoutes,
   driverOptions,
   barangayOptions,
+  vehicleOptions,
+  vehicleDisplayOptions,
 }: Props) {
   const [routes, setRoutes] = useState(initialRoutes);
   const [viewing, setViewing] = useState<Route | null>(null);
@@ -80,6 +85,7 @@ export default function RoutePageContent({
           routes={routes}
           driverOptions={driverOptions}
           barangayOptions={barangayOptions}
+          vehicleDisplayOptions={vehicleDisplayOptions}
           onAdd={openAdd}
           onView={setViewing}
           onEdit={openEdit}
@@ -100,6 +106,7 @@ export default function RoutePageContent({
           route={editing}
           driverOptions={driverOptions}
           barangayOptions={barangayOptions}
+          vehicleOptions={vehicleOptions}
           open
           onClose={() => setFormOpen(false)}
           onSuccess={handleSave}

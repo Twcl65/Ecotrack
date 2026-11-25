@@ -27,10 +27,13 @@ function escapeXml(value: string) {
 }
 
 function recordTitle(record: GarbageCollectionRecord) {
-  return `Garbage-${safeFileName(record.barangay)}-${record.scheduleDate}`;
+  const mode = record.collectionMode === "input" ? "Input" : "Calculated";
+  return `Garbage-${mode}-${safeFileName(record.barangay)}-${record.scheduleDate}`;
 }
 
 function createPdfHtml(record: GarbageCollectionRecord) {
+  const collectionType =
+    record.collectionMode === "input" ? "Input Collection" : "Calculate Collection";
   const rows = record.materials
     .map(
       (material) => `<tr>
@@ -57,12 +60,14 @@ function createPdfHtml(record: GarbageCollectionRecord) {
         </style>
       </head>
       <body>
-        <h1>Collected Garbage</h1>
+        <h1>${collectionType}</h1>
         <div class="meta">
           <strong>Schedule:</strong> ${escapeHtml(record.barangay)}<br>
           <strong>Date:</strong> ${escapeHtml(record.scheduleDate)}<br>
+          <strong>Type:</strong> ${collectionType}<br>
           <strong>Saved:</strong> ${escapeHtml(new Date(record.createdAt).toLocaleString())}
         </div>
+        <p><strong>Collected:</strong> ${record.sackCount} Sack / ${record.totalKg} kg</p>
         <table>
           <thead><tr><th>Material</th><th>Rate</th><th>Collected</th><th>Price</th></tr></thead>
           <tbody>${rows}</tbody>
@@ -93,11 +98,15 @@ export async function exportGarbagePdf(record: GarbageCollectionRecord) {
 }
 
 export async function exportGarbageExcel(record: GarbageCollectionRecord) {
+  const collectionType =
+    record.collectionMode === "input" ? "Input Collection" : "Calculate Collection";
   const rows: (string | number)[][] = [
-    ["Collected Garbage"],
+    [collectionType],
     ["Schedule", record.barangay],
     ["Date", record.scheduleDate],
+    ["Type", collectionType],
     ["Saved", new Date(record.createdAt).toLocaleString()],
+    ["Collected", `${record.sackCount} Sack / ${record.totalKg} kg`],
     [],
     ["Material", "Rate", "Collected", "Price"],
     ...record.materials.map((material) => [

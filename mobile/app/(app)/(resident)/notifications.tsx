@@ -24,6 +24,7 @@ export default function NotificationsScreen() {
     () => ({
       reminder: colors.warning,
       complaint: colors.info,
+      maintenance: colors.warning,
     }),
     [colors]
   );

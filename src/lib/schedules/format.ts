@@ -55,6 +55,8 @@ export function mapScheduleRow(
     barangay: string;
     collection_date: string;
     route_id?: string | null;
+    vehicle_id?: string | null;
+    actual_distance_km?: number | null;
     time_start: string | null;
     time_end: string | null;
     driver: string | null;
@@ -69,6 +71,8 @@ export function mapScheduleRow(
     dateLabel: formatDateLabel(row.collection_date),
     barangay: row.barangay,
     routeId: row.route_id ?? null,
+    vehicleId: row.vehicle_id ?? null,
+    actualDistanceKm: Number(row.actual_distance_km ?? 0),
     routeLabel: route ? `${route.routeCode} — ${route.name}` : null,
     timeStart: formatTimeDisplay(row.time_start),
     timeEnd: formatTimeDisplay(row.time_end),

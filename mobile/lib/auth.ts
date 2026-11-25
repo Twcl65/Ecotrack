@@ -1,5 +1,58 @@
 import { supabase } from "./supabase";
 
+export function isPasswordRecoveryUrl(url: string): boolean {
+  try {
+    const parsedUrl = new URL(url);
+    return `${parsedUrl.hostname}${parsedUrl.pathname}`
+      .toLowerCase()
+      .includes("reset-password");
+  } catch {
+    return false;
+  }
+}
+
+export async function consumePasswordRecoveryUrl(
+  url: string
+): Promise<{ error?: string }> {
+  const parsedUrl = new URL(url);
+  const query = parsedUrl.searchParams;
+  const fragment = new URLSearchParams(parsedUrl.hash.slice(1));
+  const code = query.get("code");
+  const tokenHash = query.get("token_hash") ?? fragment.get("token_hash");
+  const linkType = query.get("type") ?? fragment.get("type");
+
+  if (code) {
+    const { error } = await supabase.auth.exchangeCodeForSession(code);
+    return error ? { error: error.message } : {};
+  }
+
+  if (tokenHash) {
+    if (linkType !== "recovery") {
+      return { error: "This password reset link is invalid or has expired." };
+    }
+
+    const { error } = await supabase.auth.verifyOtp({
+      token_hash: tokenHash,
+      type: "recovery",
+    });
+    return error ? { error: error.message } : {};
+  }
+
+  const accessToken =
+    query.get("access_token") ?? fragment.get("access_token");
+  const refreshToken =
+    query.get("refresh_token") ?? fragment.get("refresh_token");
+  if (accessToken && refreshToken && (!linkType || linkType === "recovery")) {
+    const { error } = await supabase.auth.setSession({
+      access_token: accessToken,
+      refresh_token: refreshToken,
+    });
+    return error ? { error: error.message } : {};
+  }
+
+  return { error: "This password reset link is invalid or has expired." };
+}
+
 export type AppRole = "resident" | "driver" | "admin" | "unknown";
 
 export type UserProfile = {

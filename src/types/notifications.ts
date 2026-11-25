@@ -3,6 +3,7 @@ export type NotificationTone =
   | "schedule"
   | "announcement"
   | "collection"
+  | "maintenance"
   | "info";
 
 export type AdminNotification = {
@@ -22,5 +23,6 @@ export const NOTIFICATION_TONE_STYLES: Record<
   schedule: { iconBg: "bg-amber-100", iconColor: "text-amber-600" },
   announcement: { iconBg: "bg-blue-100", iconColor: "text-blue-600" },
   collection: { iconBg: "bg-emerald-100", iconColor: "text-emerald-600" },
+  maintenance: { iconBg: "bg-amber-100", iconColor: "text-amber-700" },
   info: { iconBg: "bg-gray-100", iconColor: "text-gray-600" },
 };

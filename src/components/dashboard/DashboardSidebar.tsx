@@ -15,6 +15,7 @@ import {
   Settings,
   Truck,
   Users,
+  Wrench,
   X,
 } from "lucide-react";
 
@@ -30,6 +31,7 @@ const NAV = [
   { href: "/dashboard/collection", label: "Collection Monitoring", icon: Truck },
   { href: "/dashboard/segregated-collection", label: "Collection Report", icon: Leaf },
   { href: "/dashboard/routes", label: "Route Management", icon: Route },
+  { href: "/dashboard/vehicles", label: "Manage Vehicles", icon: Wrench },
   { href: "/dashboard/settings", label: "Settings", icon: Settings },
 ];
 

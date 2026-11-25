@@ -10,7 +10,7 @@ import type { Complaint } from "@/types/complaint";
 import type { GeneratedReport, ReportFilters } from "@/types/reports";
 import type { Schedule } from "@/types/schedules";
 import type { Route } from "@/types/routes";
-import type { VehicleMaintenanceData } from "@/app/dashboard/report/vehicle-actions";
+import type { Vehicle } from "@/types/vehicles";
 import type { MonthlyCollectionReport } from "@/lib/segregated-collection/monthly-data";
 import RecentReportsTable from "./RecentReportsTable";
 import ReportBarangayChart from "./ReportBarangayChart";
@@ -23,7 +23,7 @@ import VehicleReportTable from "./VehicleReportTable";
 type Props = {
   schedules: Schedule[];
   routes: Route[];
-  vehicleMaintenance: VehicleMaintenanceData[];
+  vehicles: Vehicle[];
   complaints: Complaint[];
   barangayOptions: string[];
   initialReports: GeneratedReport[];
@@ -38,7 +38,7 @@ const inputClass =
 export default function ReportPageContent({
   schedules,
   routes,
-  vehicleMaintenance,
+  vehicles,
   complaints,
   barangayOptions,
   initialReports,
@@ -48,7 +48,6 @@ export default function ReportPageContent({
 }: Props) {
   const [filters, setFilters] = useState<ReportFilters>(initialFilters);
   const [reports, setReports] = useState(initialReports);
-  const [maintenance, setMaintenance] = useState(vehicleMaintenance);
   const [generating, setGenerating] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -154,10 +153,8 @@ export default function ReportPageContent({
 
       {filters.reportType === "vehicle" ? (
         <VehicleReportTable
-          routes={routes}
+          vehicles={vehicles}
           schedules={schedules}
-          initialMaintenance={maintenance}
-          onMaintenanceChange={setMaintenance}
           filters={filters}
         />
       ) : (
@@ -175,7 +172,7 @@ export default function ReportPageContent({
         schedules={schedules}
         complaints={complaints}
         routes={routes}
-        vehicleMaintenance={maintenance}
+        vehicles={vehicles}
       />
     </div>
   );

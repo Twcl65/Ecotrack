@@ -4,21 +4,29 @@ import { fetchSchedules } from "./schedules";
 import { supabase } from "../supabase";
 
 export async function startSchedule(scheduleId: string): Promise<string | null> {
-  const { error } = await supabase
+  const { data, error } = await supabase
     .from("collection_schedules")
     .update({ status: "ongoing", updated_at: new Date().toISOString() })
-    .eq("id", scheduleId);
+    .eq("id", scheduleId)
+    .in("status", ["pending", "ongoing"])
+    .select("id")
+    .maybeSingle();
+  if (error) return error.message;
 
-  return error?.message ?? null;
+  return data ? null : "Collection schedule could not be started.";
 }
 
 export async function completeSchedule(scheduleId: string): Promise<string | null> {
-  const { error } = await supabase
+  const { data, error } = await supabase
     .from("collection_schedules")
     .update({ status: "completed", updated_at: new Date().toISOString() })
-    .eq("id", scheduleId);
+    .eq("id", scheduleId)
+    .eq("status", "ongoing")
+    .select("id")
+    .maybeSingle();
+  if (error) return error.message;
 
-  return error?.message ?? null;
+  return data ? null : "Collection schedule is no longer active.";
 }
 
 export async function startTodayCollection(driverName: string): Promise<string | null> {
@@ -40,7 +48,7 @@ export async function completeTodayCollection(driverName: string): Promise<strin
   const today = filterDriverSchedules(schedules, driverName).filter(
     (s) =>
       s.date === todayIso() &&
-      (s.status === "ongoing" || s.status === "pending")
+      s.status === "ongoing"
   );
 
   for (const schedule of today) {

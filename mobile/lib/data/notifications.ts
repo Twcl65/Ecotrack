@@ -1,6 +1,7 @@
 import { todayIso } from "../date";
 import type { UserComplaint } from "./complaints";
 import type { ScheduleItem } from "./schedules";
+import type { DriverVehicleMaintenanceRequest } from "./vehicles";
 
 export type NotificationItem = {
   id: string;
@@ -9,8 +10,8 @@ export type NotificationItem = {
   message: string;
   details: string;
   timestamp: string;
-  type: "Collection" | "Complaint";
-  tone: "reminder" | "complaint";
+  type: "Collection" | "Complaint" | "Maintenance";
+  tone: "reminder" | "complaint" | "maintenance";
 };
 
 export function buildNotifications(
@@ -48,17 +49,43 @@ export function buildNotifications(
 }
 
 export function buildDriverNotifications(
-  schedules: ScheduleItem[]
+  schedules: ScheduleItem[],
+  maintenanceRequests: DriverVehicleMaintenanceRequest[] = []
 ): NotificationItem[] {
   const today = todayIso();
-  return schedules
+  const scheduleNotifications = schedules
     .filter(
       (schedule) =>
         schedule.date >= today &&
         !["no_collection", "canceled", "maintenance"].includes(schedule.status)
     )
-    .map((schedule) => scheduleNotification(schedule, "Collection Schedule"))
-    .slice(0, 20);
+    .map((schedule) => scheduleNotification(schedule, "Collection Schedule"));
+  const maintenanceNotifications = maintenanceRequests
+    .filter((request) => request.status !== "pending")
+    .map((request) => {
+      const status = request.status.replaceAll("_", " ");
+      return {
+        id: `vehicle-maintenance-${request.id}-${request.status}`,
+        title: `Maintenance request ${status}`,
+        detailTitle: request.requestType,
+        message: `Your ${request.requestType.toLowerCase()} request was ${status}.`,
+        details: [
+          `Request: ${request.requestType}`,
+          `Status: ${status}`,
+          ...(request.scheduledMaintenanceDate
+            ? [`Scheduled maintenance: ${new Date(`${request.scheduledMaintenanceDate}T00:00:00`).toLocaleDateString()}`]
+            : []),
+          "",
+          request.description,
+          ...(request.adminNote ? ["", `Admin note: ${request.adminNote}`] : []),
+        ].join("\n"),
+        timestamp: new Date(request.updatedAt).toLocaleString(),
+        type: "Maintenance" as const,
+        tone: "maintenance" as const,
+      };
+    });
+
+  return [...maintenanceNotifications, ...scheduleNotifications].slice(0, 20);
 }
 
 function scheduleNotification(

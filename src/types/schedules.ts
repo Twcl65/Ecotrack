@@ -12,6 +12,8 @@ export type Schedule = {
   dateLabel: string;
   barangay: string;
   routeId: string | null;
+  vehicleId: string | null;
+  actualDistanceKm: number;
   routeLabel: string | null;
   timeStart: string | null;
   timeEnd: string | null;

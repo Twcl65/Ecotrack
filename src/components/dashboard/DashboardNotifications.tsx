@@ -7,13 +7,25 @@ import {
   Megaphone,
   Truck,
   Info,
+  Wrench,
 } from "lucide-react";
 import Link from "next/link";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useRouter } from "next/navigation";
+import {
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+  useSyncExternalStore,
+} from "react";
 import type { AdminNotification, NotificationTone } from "@/types/notifications";
 import { NOTIFICATION_TONE_STYLES } from "@/types/notifications";
+import { createClient } from "@/lib/supabase/client";
 
 const READ_KEY = "ecotrack-read-notifications";
+const EMPTY_READ_IDS = new Set<string>();
+const readIdListeners = new Set<() => void>();
+let readIdsSnapshot: Set<string> | null = null;
 
 const TONE_ICONS: Record<
   NotificationTone,
@@ -23,6 +35,7 @@ const TONE_ICONS: Record<
   schedule: CalendarClock,
   announcement: Megaphone,
   collection: Truck,
+  maintenance: Wrench,
   info: Info,
 };
 
@@ -41,18 +54,52 @@ function loadReadIds(): Set<string> {
   }
 }
 
+function getReadIdsSnapshot(): Set<string> {
+  if (typeof window === "undefined") return EMPTY_READ_IDS;
+  if (!readIdsSnapshot) readIdsSnapshot = loadReadIds();
+  return readIdsSnapshot;
+}
+
+function subscribeToReadIds(listener: () => void) {
+  readIdListeners.add(listener);
+  return () => readIdListeners.delete(listener);
+}
+
 function saveReadIds(ids: Set<string>) {
   localStorage.setItem(READ_KEY, JSON.stringify([...ids]));
+  readIdsSnapshot = ids;
+  readIdListeners.forEach((listener) => listener());
 }
 
 export default function DashboardNotifications({ notifications }: Props) {
+  const router = useRouter();
   const [open, setOpen] = useState(false);
-  const [readIds, setReadIds] = useState<Set<string>>(new Set());
+  const readIds = useSyncExternalStore(
+    subscribeToReadIds,
+    getReadIdsSnapshot,
+    () => EMPTY_READ_IDS
+  );
   const panelRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    setReadIds(loadReadIds());
-  }, []);
+    const supabase = createClient();
+    const channel = supabase
+      .channel("admin-vehicle-maintenance-notifications")
+      .on(
+        "postgres_changes",
+        {
+          event: "*",
+          schema: "public",
+          table: "vehicle_maintenance_requests",
+        },
+        () => router.refresh()
+      )
+      .subscribe();
+
+    return () => {
+      void supabase.removeChannel(channel);
+    };
+  }, [router]);
 
   useEffect(() => {
     if (!open) return;
@@ -82,7 +129,6 @@ export default function DashboardNotifications({ notifications }: Props) {
   const markAllRead = useCallback(() => {
     const next = new Set(readIds);
     for (const n of notifications) next.add(n.id);
-    setReadIds(next);
     saveReadIds(next);
   }, [notifications, readIds]);
 
@@ -90,7 +136,6 @@ export default function DashboardNotifications({ notifications }: Props) {
     (id: string) => {
       const next = new Set(readIds);
       next.add(id);
-      setReadIds(next);
       saveReadIds(next);
     },
     [readIds]

@@ -71,6 +71,11 @@ export type CollectionScheduleRow = {
   barangay: string;
   collection_date: string;
   route_id: string | null;
+  vehicle_id: string | null;
+  actual_distance_km: number;
+  odometer_start_km: number | null;
+  odometer_end_km: number | null;
+  odometer_applied_at: string | null;
   time_start: string | null;
   time_end: string | null;
   driver: string | null;
@@ -213,8 +218,11 @@ export type DriverGarbageCollectionRow = {
   schedule_date: string;
   barangay: string;
   driver_id: string;
+  collection_mode: "input" | "calculate";
   materials: Json;
   total_price: number;
+  sack_count: number;
+  total_kg: number;
   created_at: string;
 };
 
@@ -222,6 +230,7 @@ export type MonthlyCollectionReportRow = {
   report_year: number;
   month_number: number;
   day_number: number;
+  total_sacks: number;
   total_kg: number;
   updated_by: string;
   created_at: string;
@@ -244,6 +253,40 @@ export type VehicleMaintenanceHistoryRow = {
   description: string;
   created_by: string;
   created_at: string;
+};
+
+export type VehicleRow = {
+  id: string;
+  vehicle_code: string;
+  plate_number: string;
+  vehicle_type: "Small Truck" | "Large Truck" | "Other";
+  model: string;
+  assigned_driver: string | null;
+  starting_odometer_km: number;
+  current_odometer_km: number;
+  last_maintenance_date: string | null;
+  last_maintenance_odometer_km: number | null;
+  next_maintenance_date: string | null;
+  next_maintenance_odometer_km: number | null;
+  maintenance_type: string | null;
+  status: "active" | "inactive";
+  created_at: string;
+  updated_at: string;
+};
+
+export type VehicleMaintenanceRequestRow = {
+  id: string;
+  vehicle_id: string;
+  driver_id: string;
+  driver_name: string;
+  request_type: string;
+  description: string;
+  status: "pending" | "approved" | "in_progress" | "completed" | "rejected";
+  admin_note: string | null;
+  scheduled_maintenance_date: string | null;
+  reviewed_by: string | null;
+  requested_at: string;
+  updated_at: string;
 };
 
 export type Json =
@@ -376,12 +419,25 @@ export type Database = {
         Row: CollectionScheduleRow;
         Insert: Omit<
           CollectionScheduleRow,
-          "id" | "created_at" | "updated_at" | "archived_at"
+          | "id"
+          | "created_at"
+          | "updated_at"
+          | "archived_at"
+          | "vehicle_id"
+          | "actual_distance_km"
+          | "odometer_start_km"
+          | "odometer_end_km"
+          | "odometer_applied_at"
         > & {
           id?: string;
           created_at?: string;
           updated_at?: string;
           archived_at?: string | null;
+          vehicle_id?: string | null;
+          actual_distance_km?: number;
+          odometer_start_km?: number | null;
+          odometer_end_km?: number | null;
+          odometer_applied_at?: string | null;
         };
         Update: Partial<CollectionScheduleRow>;
         Relationships: [];
@@ -513,19 +569,25 @@ export type Database = {
         Row: DriverGarbageCollectionRow;
         Insert: Omit<
           DriverGarbageCollectionRow,
-          "id" | "created_at"
+          "id" | "created_at" | "sack_count" | "total_kg"
         > & {
           id?: string;
           created_at?: string;
+          sack_count?: number;
+          total_kg?: number;
         };
         Update: Partial<DriverGarbageCollectionRow>;
         Relationships: [];
       };
       monthly_collection_reports: {
         Row: MonthlyCollectionReportRow;
-        Insert: Omit<MonthlyCollectionReportRow, "created_at" | "updated_at"> & {
+        Insert: Omit<
+          MonthlyCollectionReportRow,
+          "created_at" | "updated_at" | "total_sacks"
+        > & {
           created_at?: string;
           updated_at?: string;
+          total_sacks?: number;
         };
         Update: Partial<MonthlyCollectionReportRow>;
         Relationships: [];
@@ -546,6 +608,48 @@ export type Database = {
           created_at?: string;
         };
         Update: Partial<VehicleMaintenanceHistoryRow>;
+        Relationships: [];
+      };
+      vehicles: {
+        Row: VehicleRow;
+        Insert: Omit<
+          VehicleRow,
+          | "id"
+          | "created_at"
+          | "updated_at"
+          | "last_maintenance_odometer_km"
+          | "next_maintenance_odometer_km"
+        > & {
+          id?: string;
+          created_at?: string;
+          updated_at?: string;
+          last_maintenance_odometer_km?: number | null;
+          next_maintenance_odometer_km?: number | null;
+        };
+        Update: Partial<VehicleRow>;
+        Relationships: [];
+      };
+      vehicle_maintenance_requests: {
+        Row: VehicleMaintenanceRequestRow;
+        Insert: Omit<
+          VehicleMaintenanceRequestRow,
+          | "id"
+          | "requested_at"
+          | "updated_at"
+          | "reviewed_by"
+          | "admin_note"
+          | "scheduled_maintenance_date"
+          | "status"
+        > & {
+          id?: string;
+          requested_at?: string;
+          updated_at?: string;
+          reviewed_by?: string | null;
+          admin_note?: string | null;
+          scheduled_maintenance_date?: string | null;
+          status?: VehicleMaintenanceRequestRow["status"];
+        };
+        Update: Partial<VehicleMaintenanceRequestRow>;
         Relationships: [];
       };
       app_settings: {

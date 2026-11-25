@@ -11,6 +11,7 @@ import { filterDriverSchedules } from "@/lib/data/driver";
 import { fetchAnnouncements } from "@/lib/data/announcements";
 import { fetchUserComplaints } from "@/lib/data/complaints";
 import { fetchSchedules } from "@/lib/data/schedules";
+import { fetchDriverVehicleMaintenanceNotifications } from "@/lib/data/vehicles";
 
 type Module = "resident" | "driver";
 
@@ -49,7 +50,14 @@ export function useUnreadCounts(module: Module): UnreadCounts {
   const load = useCallback(async () => {
     try {
       const readKeys = READ_KEYS[module];
-      const [announcements, schedules, announcementReadRaw, notificationReadRaw, complaints] =
+      const [
+        announcements,
+        schedules,
+        announcementReadRaw,
+        notificationReadRaw,
+        complaints,
+        maintenanceRequests,
+      ] =
         await Promise.all([
           fetchAnnouncements(),
           fetchSchedules(true),
@@ -62,13 +70,17 @@ export function useUnreadCounts(module: Module): UnreadCounts {
                 profile?.id
               )
             : Promise.resolve([]),
+          module === "driver" && profile?.id
+            ? fetchDriverVehicleMaintenanceNotifications(profile.id)
+            : Promise.resolve([]),
         ]);
       const announcementReadIds = parseReadIds(announcementReadRaw);
       const notificationReadIds = parseReadIds(notificationReadRaw);
       const notificationItems =
         module === "driver"
           ? buildDriverNotifications(
-              filterDriverSchedules(schedules, profile?.fullName ?? "Driver")
+              filterDriverSchedules(schedules, profile?.fullName ?? "Driver"),
+              maintenanceRequests
             )
           : buildNotifications(schedules, complaints);
 

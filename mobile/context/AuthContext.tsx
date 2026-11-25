@@ -7,9 +7,12 @@ import React, {
   useRef,
   useState,
 } from "react";
+import * as Linking from "expo-linking";
 import type { Session } from "@supabase/supabase-js";
 import {
+  consumePasswordRecoveryUrl,
   fetchUserProfile,
+  isPasswordRecoveryUrl,
   signIn as authSignIn,
   signOut as authSignOut,
   signUp as authSignUp,
@@ -22,6 +25,10 @@ type AuthContextValue = {
   session: Session | null;
   profile: UserProfile | null;
   loading: boolean;
+  passwordRecovery: {
+    status: "idle" | "processing" | "ready" | "error";
+    error?: string;
+  };
   signIn: (email: string, password: string) => Promise<{ error?: string }>;
   signUp: (params: {
     email: string;
@@ -39,7 +46,40 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [session, setSession] = useState<Session | null>(null);
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [loading, setLoading] = useState(true);
+  const [passwordRecovery, setPasswordRecovery] = useState<
+    AuthContextValue["passwordRecovery"]
+  >({ status: "idle" });
   const signingOutRef = useRef(false);
+  const processedRecoveryUrls = useRef(new Set<string>());
+
+  const handleRecoveryUrl = useCallback(async (url: string | null) => {
+    if (
+      !url ||
+      processedRecoveryUrls.current.has(url) ||
+      !isPasswordRecoveryUrl(url)
+    ) {
+      return;
+    }
+
+    processedRecoveryUrls.current.add(url);
+    setPasswordRecovery({ status: "processing" });
+    try {
+      const result = await consumePasswordRecoveryUrl(url);
+      setPasswordRecovery(
+        result.error
+          ? { status: "error", error: result.error }
+          : { status: "ready" }
+      );
+    } catch (error) {
+      setPasswordRecovery({
+        status: "error",
+        error:
+          error instanceof Error
+            ? error.message
+            : "Could not verify the password reset link.",
+      });
+    }
+  }, []);
 
   const loadProfile = useCallback(async (userId: string) => {
     if (signingOutRef.current) return;
@@ -110,6 +150,30 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     };
   }, [loadProfile]);
 
+  useEffect(() => {
+    let active = true;
+    const processUrl = (url: string | null) => {
+      if (active) void handleRecoveryUrl(url);
+    };
+
+    void Linking.getInitialURL()
+      .then(processUrl)
+      .catch((error: unknown) => {
+        console.warn(
+          "Could not read the initial app link:",
+          error instanceof Error ? error.message : error
+        );
+      });
+    const subscription = Linking.addEventListener("url", ({ url }) => {
+      processUrl(url);
+    });
+
+    return () => {
+      active = false;
+      subscription.remove();
+    };
+  }, [handleRecoveryUrl]);
+
   const signIn = useCallback(async (email: string, password: string) => {
     const { error } = await authSignIn(email, password);
     return { error: error?.message };
@@ -160,6 +224,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       session,
       profile,
       loading,
+      passwordRecovery,
       signIn,
       signUp,
       signOut,
@@ -167,7 +232,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         if (session?.user) await loadProfile(session.user.id);
       },
     }),
-    [session, profile, loading, signIn, signUp, signOut, loadProfile]
+    [
+      session,
+      profile,
+      loading,
+      passwordRecovery,
+      signIn,
+      signUp,
+      signOut,
+      loadProfile,
+    ]
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

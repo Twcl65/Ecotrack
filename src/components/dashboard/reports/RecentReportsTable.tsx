@@ -9,7 +9,7 @@ import { REPORT_TYPE_META } from "@/types/reports";
 import type { Complaint } from "@/types/complaint";
 import type { Route } from "@/types/routes";
 import type { Schedule } from "@/types/schedules";
-import type { VehicleMaintenanceData } from "@/app/dashboard/report/vehicle-actions";
+import type { Vehicle } from "@/types/vehicles";
 
 type Props = {
   reports: GeneratedReport[];
@@ -17,7 +17,7 @@ type Props = {
   schedules: Schedule[];
   complaints: Complaint[];
   routes: Route[];
-  vehicleMaintenance: VehicleMaintenanceData[];
+  vehicles: Vehicle[];
 };
 
 const PAGE_SIZE = 10;
@@ -36,12 +36,12 @@ export default function RecentReportsTable({
   schedules,
   complaints,
   routes,
-  vehicleMaintenance,
+  vehicles,
 }: Props) {
   const [page, setPage] = useState(1);
   const [exportError, setExportError] = useState<string | null>(null);
 
-  const exportData = { schedules, complaints, routes, vehicleMaintenance };
+  const exportData = { schedules, complaints, routes, vehicles };
 
   function exportPdf(report: GeneratedReport) {
     setExportError(null);

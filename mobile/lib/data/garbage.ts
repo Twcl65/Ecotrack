@@ -1,6 +1,7 @@
 import { supabase } from "../supabase";
 
 export type GarbageMaterialUnit = "kg" | "piece";
+export type GarbageCollectionMode = "input" | "calculate";
 
 export type GarbageMaterialDefinition = {
   materialKey: string;
@@ -152,14 +153,54 @@ export type GarbageMaterialEntry = {
   price: number;
 };
 
+export type GarbageCollectionTotals = {
+  sackCount: number;
+  totalKg: number;
+};
+
+export function getGarbageCollectionTotals(
+  materials: readonly {
+    id: string;
+    name: string;
+    unit: GarbageMaterialUnit;
+    quantity: number | string;
+  }[]
+): GarbageCollectionTotals {
+  const totals = materials.reduce(
+    (current, material) => {
+      const quantity = Number(material.quantity);
+      if (!Number.isFinite(quantity) || quantity <= 0) return current;
+
+      if (
+        material.unit === "piece" &&
+        (material.id === "sack" || /^sacks?$/i.test(material.name.trim()))
+      ) {
+        current.sackCount += quantity;
+      } else if (material.unit === "kg") {
+        current.totalKg += quantity;
+      }
+      return current;
+    },
+    { sackCount: 0, totalKg: 0 }
+  );
+
+  return {
+    sackCount: totals.sackCount,
+    totalKg: Math.round(totals.totalKg * 100) / 100,
+  };
+}
+
 export type GarbageCollectionRecord = {
   id: string;
   scheduleId: string;
   scheduleDate: string;
   barangay: string;
   driverId: string;
+  collectionMode: GarbageCollectionMode;
   materials: GarbageMaterialEntry[];
   totalPrice: number;
+  sackCount: number;
+  totalKg: number;
   createdAt: string;
 };
 
@@ -168,8 +209,11 @@ type SaveGarbageCollectionParams = {
   scheduleDate: string;
   barangay: string;
   driverId: string;
+  collectionMode: GarbageCollectionMode;
   materials: GarbageMaterialEntry[];
   totalPrice: number;
+  sackCount: number;
+  totalKg: number;
 };
 
 export class GarbageCollectionSaveError extends Error {
@@ -190,8 +234,11 @@ function mapRecord(row: Record<string, unknown>): GarbageCollectionRecord {
     scheduleDate: String(row.schedule_date),
     barangay: String(row.barangay),
     driverId: String(row.driver_id),
+    collectionMode: row.collection_mode as GarbageCollectionMode,
     materials: row.materials as GarbageMaterialEntry[],
     totalPrice: Number(row.total_price),
+    sackCount: Number(row.sack_count),
+    totalKg: Number(row.total_kg),
     createdAt: String(row.created_at),
   };
 }
@@ -206,12 +253,13 @@ export async function saveGarbageCollection(
       schedule_date: params.scheduleDate,
       barangay: params.barangay,
       driver_id: params.driverId,
+      collection_mode: params.collectionMode,
       materials: params.materials,
       total_price: params.totalPrice,
+      sack_count: params.sackCount,
+      total_kg: params.totalKg,
     })
-    .select(
-      "id, schedule_id, schedule_date, barangay, driver_id, materials, total_price, created_at"
-    )
+    .select("id, schedule_id, schedule_date, barangay, driver_id, collection_mode, materials, total_price, sack_count, total_kg, created_at")
     .single();
 
   if (error) {
@@ -233,9 +281,7 @@ export async function fetchGarbageCollections(
 ): Promise<GarbageCollectionRecord[]> {
   let query = supabase
     .from("driver_garbage_collections")
-    .select(
-      "id, schedule_id, schedule_date, barangay, driver_id, materials, total_price, created_at"
-    )
+    .select("id, schedule_id, schedule_date, barangay, driver_id, collection_mode, materials, total_price, sack_count, total_kg, created_at")
     .eq("driver_id", driverId)
     .order("schedule_date", { ascending: false })
     .order("created_at", { ascending: false });
@@ -250,18 +296,26 @@ export async function fetchGarbageCollections(
   return (data ?? []).map(mapRecord);
 }
 
-export async function fetchSavedGarbageScheduleDates(
+export type SavedGarbageCollectionSchedule = {
+  scheduleDate: string;
+  collectionMode: GarbageCollectionMode;
+};
+
+export async function fetchSavedGarbageScheduleEntries(
   driverId: string
-): Promise<string[]> {
+): Promise<SavedGarbageCollectionSchedule[]> {
   const { data, error } = await supabase
     .from("driver_garbage_collections")
-    .select("schedule_date")
+    .select("schedule_date, collection_mode")
     .eq("driver_id", driverId);
 
   if (error) {
     throw new Error(`Could not check saved collection dates: ${error.message}`);
   }
-  return [...new Set((data ?? []).map((row) => row.schedule_date))];
+  return (data ?? []).map((row) => ({
+    scheduleDate: row.schedule_date,
+    collectionMode: row.collection_mode as GarbageCollectionMode,
+  }));
 }
 
 export async function fetchGarbageCollection(
@@ -270,9 +324,7 @@ export async function fetchGarbageCollection(
 ): Promise<GarbageCollectionRecord> {
   const { data, error } = await supabase
     .from("driver_garbage_collections")
-    .select(
-      "id, schedule_id, schedule_date, barangay, driver_id, materials, total_price, created_at"
-    )
+    .select("id, schedule_id, schedule_date, barangay, driver_id, collection_mode, materials, total_price, sack_count, total_kg, created_at")
     .eq("id", recordId)
     .eq("driver_id", driverId)
     .single();

@@ -21,10 +21,12 @@ import {
   deleteGarbageMaterial,
   fetchGarbageMaterials,
   fetchGarbageMaterialPriceDefaults,
-  fetchSavedGarbageScheduleDates,
+  fetchSavedGarbageScheduleEntries,
   saveGarbageMaterial,
   saveGarbageMaterialPriceDefault,
   saveGarbageCollection,
+  getGarbageCollectionTotals,
+  type GarbageCollectionMode,
   type GarbageMaterialEntry,
   type GarbageMaterialUnit,
 } from "@/lib/data/garbage";
@@ -70,12 +72,18 @@ export default function SegregatedCollectionScreen() {
   const styles = useMemo(() => createStyles(colors), [colors]);
   const [materials, setMaterials] = useState(INITIAL_MATERIALS);
   const [schedules, setSchedules] = useState<ScheduleItem[]>([]);
-  const [savedScheduleDates, setSavedScheduleDates] = useState<string[]>([]);
+  const [savedScheduleEntries, setSavedScheduleEntries] = useState<
+    { scheduleDate: string; collectionMode: GarbageCollectionMode }[]
+  >([]);
   const [defaultPrices, setDefaultPrices] = useState<Record<string, number>>({});
   const [scheduleId, setScheduleId] = useState("");
   const [loadingSchedules, setLoadingSchedules] = useState(true);
   const [scheduleError, setScheduleError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
+  const [collectionMode, setCollectionMode] =
+    useState<GarbageCollectionMode | null>(null);
+  const [inputSacks, setInputSacks] = useState("");
+  const [inputKg, setInputKg] = useState("");
   const saveInProgress = useRef(false);
   const editedRateIds = useRef(new Set<string>());
   const [showAddMaterial, setShowAddMaterial] = useState(false);
@@ -87,11 +95,35 @@ export default function SegregatedCollectionScreen() {
   const [newMaterialUnit, setNewMaterialUnit] =
     useState<GarbageMaterialUnit>("kg");
 
-  const selectedSchedule = schedules.find((item) => item.id === scheduleId);
+  const hasSavedMode = (
+    date: string,
+    mode: GarbageCollectionMode
+  ) =>
+    savedScheduleEntries.some(
+      (saved) => saved.scheduleDate === date && saved.collectionMode === mode
+    );
+  const availableSchedules = schedules.filter((schedule) =>
+    collectionMode
+      ? !hasSavedMode(schedule.date, collectionMode)
+      : !hasSavedMode(schedule.date, "input") ||
+        !hasSavedMode(schedule.date, "calculate")
+  );
+  const hasSavedCollectionForMode = collectionMode
+    ? schedules.some((schedule) => hasSavedMode(schedule.date, collectionMode))
+    : schedules.length > 0 && availableSchedules.length === 0;
+  const selectedSchedule =
+    availableSchedules.find((item) => item.id === scheduleId) ??
+    availableSchedules[0];
   const total = materials.reduce(
     (sum, material) =>
       sum + toNumber(material.rate) * toNumber(material.quantity),
     0
+  );
+  const collectionTotals = getGarbageCollectionTotals(
+    materials.map((material) => ({
+      ...material,
+      quantity: toNumber(material.quantity),
+    }))
   );
 
   const loadSchedules = useCallback(async () => {
@@ -99,12 +131,12 @@ export default function SegregatedCollectionScreen() {
       const request = driverName && driverId
         ? Promise.all([
             fetchSchedules(true),
-            fetchSavedGarbageScheduleDates(driverId),
+            fetchSavedGarbageScheduleEntries(driverId),
             fetchGarbageMaterialPriceDefaults(driverId),
             fetchGarbageMaterials(driverId),
-          ]).then(([all, savedDates, defaults, customMaterials]) => ({
+          ]).then(([all, savedEntries, defaults, customMaterials]) => ({
             all,
-            savedDates,
+            savedEntries,
             defaults,
             customMaterials,
             driverName,
@@ -112,7 +144,7 @@ export default function SegregatedCollectionScreen() {
         : Promise.reject(new Error("Could not load your driver profile."));
       const {
         all,
-        savedDates,
+        savedEntries,
         defaults,
         customMaterials,
         driverName: assignedDriver,
@@ -120,11 +152,9 @@ export default function SegregatedCollectionScreen() {
       const defaultPriceMap = Object.fromEntries(
         defaults.map((item) => [item.materialKey, item.rate])
       );
-      const savedDateSet = new Set(savedDates);
       const assigned = filterDriverSchedules(all, assignedDriver)
-        .filter((schedule) => !savedDateSet.has(schedule.date))
         .sort((a, b) => b.date.localeCompare(a.date));
-      setSavedScheduleDates(savedDates);
+      setSavedScheduleEntries(savedEntries);
       setDefaultPrices(defaultPriceMap);
       setMaterials((current) => {
         const existingById = new Map(
@@ -177,7 +207,7 @@ export default function SegregatedCollectionScreen() {
 
   useFocusEffect(
     useCallback(() => {
-    void loadSchedules();
+      void loadSchedules();
     }, [loadSchedules])
   );
 
@@ -186,10 +216,15 @@ export default function SegregatedCollectionScreen() {
     field: "rate" | "quantity",
     value: string
   ) {
+    const material = materials.find((item) => item.id === id);
+    const sanitizedValue =
+      field === "quantity" && material?.unit === "piece"
+        ? sanitizeNumericInput(value).split(".")[0]
+        : sanitizeNumericInput(value);
     setMaterials((current) =>
       current.map((material) =>
         material.id === id
-          ? { ...material, [field]: sanitizeNumericInput(value) }
+          ? { ...material, [field]: sanitizedValue }
           : material
       )
     );
@@ -358,6 +393,8 @@ export default function SegregatedCollectionScreen() {
   }
 
   function resetEntries() {
+    setInputSacks("");
+    setInputKg("");
     editedRateIds.current.clear();
     setMaterials((current) => current.map((material) => ({
       ...material,
@@ -368,21 +405,24 @@ export default function SegregatedCollectionScreen() {
     })));
   }
 
-  function markDateUnavailable(date: string) {
-    setSavedScheduleDates((current) =>
-      current.includes(date) ? current : [...current, date]
+  function markCollectionSaved(
+    date: string,
+    savedMode: GarbageCollectionMode
+  ) {
+    setSavedScheduleEntries((current) =>
+      current.some(
+        (entry) =>
+          entry.scheduleDate === date && entry.collectionMode === savedMode
+      )
+        ? current
+        : [...current, { scheduleDate: date, collectionMode: savedMode }]
     );
-    const remainingSchedules = schedules.filter(
-      (schedule) => schedule.date !== date
-    );
-    setSchedules(remainingSchedules);
-    setScheduleId(remainingSchedules[0]?.id ?? "");
   }
 
-  function showDuplicateDateError() {
+  function showDuplicateDateError(mode: GarbageCollectionMode) {
     Alert.alert(
-      "Date already saved",
-      "Collected garbage has already been saved for this schedule date. Select another date."
+      "Collection already saved",
+      `${mode === "input" ? "Input" : "Calculated"} Collection has already been saved for this schedule date. Choose another schedule or collection mode.`
     );
   }
 
@@ -398,8 +438,16 @@ export default function SegregatedCollectionScreen() {
     return error instanceof Error ? error.message : "Please try again.";
   }
 
-  async function saveAndExport() {
+  async function saveCollection(exportAfterSave: boolean) {
     if (saveInProgress.current) return;
+    const selectedMode = collectionMode;
+    if (!selectedMode) {
+      Alert.alert(
+        "Collection type required",
+        "Choose Input Collection or Calculate Collection first."
+      );
+      return;
+    }
     if (!session?.user.id) {
       Alert.alert("Sign in required", "Please sign in again to save this record.");
       return;
@@ -408,7 +456,26 @@ export default function SegregatedCollectionScreen() {
       Alert.alert("Schedule required", "Choose the collection schedule first.");
       return;
     }
-    const collectedMaterials: GarbageMaterialEntry[] = materials
+    const sackCount =
+      selectedMode === "input"
+        ? Number(inputSacks)
+        : collectionTotals.sackCount;
+    const totalKg =
+      selectedMode === "input" ? Number(inputKg) : collectionTotals.totalKg;
+    if (!Number.isInteger(sackCount) || sackCount < 0) {
+      Alert.alert("Invalid sack count", "Enter a whole number of sacks.");
+      return;
+    }
+    if (
+      !Number.isFinite(totalKg) ||
+      totalKg < 0 ||
+      Math.abs(totalKg * 100 - Math.round(totalKg * 100)) > 1e-8
+    ) {
+      Alert.alert("Invalid weight", "Enter a valid total weight in kilograms.");
+      return;
+    }
+    const materialsToSave = selectedMode === "calculate" ? materials : [];
+    const collectedMaterials: GarbageMaterialEntry[] = materialsToSave
       .filter((material) => toNumber(material.quantity) > 0)
       .map((material) => {
         const rate = toNumber(material.rate);
@@ -422,10 +489,17 @@ export default function SegregatedCollectionScreen() {
           price: rate * quantity,
         };
       });
-    if (collectedMaterials.length === 0) {
+    if (selectedMode === "calculate" && collectedMaterials.length === 0) {
       Alert.alert(
         "No collected materials",
         "Enter a collected amount for at least one material."
+      );
+      return;
+    }
+    if (selectedMode === "input" && sackCount === 0 && totalKg === 0) {
+      Alert.alert(
+        "No collection amount",
+        "Enter the sack count or total kilograms collected."
       );
       return;
     }
@@ -438,37 +512,46 @@ export default function SegregatedCollectionScreen() {
         scheduleDate: selectedSchedule.date,
         barangay: selectedSchedule.barangay,
         driverId: session.user.id,
+        collectionMode: selectedMode,
         materials: collectedMaterials,
         totalPrice: collectedMaterials.reduce((sum, item) => sum + item.price, 0),
+        sackCount,
+        totalKg,
       });
-      markDateUnavailable(selectedSchedule.date);
+      markCollectionSaved(selectedSchedule.date, selectedMode);
       resetEntries();
-      Alert.alert(
-        "Collection saved",
-        "Your form has been reset. Choose an export format, or select Not now.",
-        [
-          {
-            text: "Not now",
-            style: "cancel",
-            onPress: () => showSavedConfirmation(),
-          },
-          {
-            text: "Export PDF",
-            onPress: () => void finishSave(record, "pdf"),
-          },
-          {
-            text: "Export Excel",
-            onPress: () => void finishSave(record, "excel"),
-          },
-        ]
-      );
+      if (exportAfterSave) {
+        Alert.alert(
+          "Collection saved",
+          "Your form has been reset. Choose an export format, or select Not now.",
+          [
+            {
+              text: "Not now",
+              style: "cancel",
+              onPress: () => showSavedConfirmation(),
+            },
+            {
+              text: "Export PDF",
+              onPress: () => void finishSave(record, "pdf"),
+            },
+            {
+              text: "Export Excel",
+              onPress: () => void finishSave(record, "excel"),
+            },
+          ]
+        );
+      } else {
+        showSavedConfirmation();
+      }
     } catch (error) {
       const message = getSaveErrorMessage(error);
       if (message === null) {
-        showDuplicateDateError();
+        showDuplicateDateError(selectedMode);
         void loadSchedules();
       }
-      else Alert.alert("Could not save collection", message);
+      else {
+        Alert.alert("Could not save collection", message);
+      }
     } finally {
       saveInProgress.current = false;
       setSaving(false);
@@ -477,191 +560,374 @@ export default function SegregatedCollectionScreen() {
 
   return (
     <View style={styles.screen}>
-      <AppHeader title="Segregated Garbage Collection" module="driver" />
+      <AppHeader title="Collection" module="driver" />
       <ScrollView
         contentContainerStyle={styles.content}
         keyboardShouldPersistTaps="handled"
       >
-        <View style={styles.topActions}>
-          <Pressable
-            accessibilityRole="button"
-            onPress={() => setShowAddMaterial(true)}
-            style={styles.addButton}
-          >
-            <Ionicons name="add-circle-outline" size={19} color={colors.primary} />
-            <Text style={styles.addButtonText}>Add material</Text>
-          </Pressable>
-          <Pressable
-            accessibilityRole="button"
-            onPress={() => router.push("/(app)/(driver)/garbage-history" as never)}
-            style={styles.historyButton}
-          >
-            <Ionicons name="time-outline" size={18} color={colors.primary} />
-            <Text style={styles.addButtonText}>History</Text>
-          </Pressable>
-        </View>
-
-        <View style={styles.intro}>
-          <Text style={styles.heading}>Collected recyclables</Text>
-          <Text style={styles.description}>
-            Choose a schedule, enter rates and amounts, then save the collection.
-          </Text>
-        </View>
-
-        <View style={styles.scheduleCard}>
-          {loadingSchedules ? (
-            <ActivityIndicator color={colors.primary} />
-          ) : scheduleError ? (
-            <View style={styles.scheduleError}>
-              <Text style={styles.errorText}>{scheduleError}</Text>
-              <Pressable
-                onPress={() => {
-                  setLoadingSchedules(true);
-                  void loadSchedules();
-                }}
-              >
-                <Text style={styles.retryText}>Try again</Text>
-              </Pressable>
-            </View>
-          ) : schedules.length === 0 ? (
-            <Text style={styles.emptyText}>
-              {savedScheduleDates.length > 0
-                ? "All assigned schedule dates have already been saved."
-                : "No schedules are assigned to you."}
-            </Text>
-          ) : (
-            <AppSelect
-              label="Collection schedule"
-              options={schedules.map(
-                (schedule) => `${schedule.dateLabel} · ${schedule.barangay}`
-              )}
-              onChange={(value) => {
-                const schedule = schedules.find(
-                  (item) =>
-                    `${item.dateLabel} · ${item.barangay}` === value
-                );
-                if (schedule) setScheduleId(schedule.id);
-              }}
-              value={
-                selectedSchedule
-                  ? `${selectedSchedule.dateLabel} · ${selectedSchedule.barangay}`
-                  : ""
-              }
-            />
-          )}
-        </View>
-
-        {materials.map((material) => {
-          const price = toNumber(material.rate) * toNumber(material.quantity);
-          const unitName = material.unit === "piece" ? "piece" : "kg";
-          return (
-            <View key={material.id} style={styles.materialCard}>
-              <View style={styles.cardHeader}>
-                <View style={styles.materialInfo}>
-                  <Text style={styles.materialName}>{material.name}</Text>
-                  <Text style={styles.unit}>
-                    {material.unit === "piece" ? "pcs" : "kg"}
-                  </Text>
-                </View>
-                {material.id.startsWith("custom-") ? (
-                  <Pressable
-                    accessibilityRole="button"
-                    accessibilityLabel={`Remove ${material.name}`}
-                    disabled={deletingMaterialId !== null}
-                    onPress={() => void removeMaterial(material)}
-                    hitSlop={8}
-                  >
-                    {deletingMaterialId === material.id ? (
-                      <ActivityIndicator color={colors.primary} size="small" />
-                    ) : (
-                      <Ionicons
-                        name="close-circle-outline"
-                        size={20}
-                        color={colors.textMuted}
-                      />
-                    )}
-                  </Pressable>
-                ) : null}
-                <View style={styles.priceBadge}>
-                  <Text style={styles.priceLabel}>Price</Text>
-                  <Text style={styles.price}>{formatPrice(price)}</Text>
-                </View>
-              </View>
-              <View style={styles.fieldsRow}>
-                <View style={styles.field}>
-                  <Text style={styles.fieldLabel}>Rate / {unitName}</Text>
-                  <TextInput
-                    accessibilityLabel={`${material.name} rate per ${unitName}`}
-                    keyboardType="decimal-pad"
-                    onChangeText={(value) => {
-                      editedRateIds.current.add(material.id);
-                      updateMaterial(material.id, "rate", value);
-                    }}
-                    onEndEditing={({ nativeEvent }) =>
-                      promptSaveDefaultPrice(material, nativeEvent.text)
-                    }
-                    placeholder="0.00"
-                    placeholderTextColor={colors.textMuted}
-                    style={styles.input}
-                    value={material.rate}
-                  />
-                </View>
-                <Text style={styles.multiply}>×</Text>
-                <View style={styles.field}>
-                  <Text style={styles.fieldLabel}>
-                    Collected ({material.unit === "piece" ? "pcs" : "kg"})
-                  </Text>
-                  <TextInput
-                    accessibilityLabel={`${material.name} collected`}
-                    keyboardType="decimal-pad"
-                    onChangeText={(value) =>
-                      updateMaterial(material.id, "quantity", value)
-                    }
-                    placeholder="0"
-                    placeholderTextColor={colors.textMuted}
-                    style={styles.input}
-                    value={material.quantity}
-                  />
-                </View>
-              </View>
-            </View>
-          );
-        })}
-
-        <View style={styles.totalCard}>
-          <View>
-            <Text style={styles.totalLabel}>Total Price</Text>
-            <Text style={styles.totalHint}>All collected materials</Text>
-          </View>
-          <Text style={styles.totalPrice}>{formatPrice(total)}</Text>
-        </View>
-
         <Pressable
           accessibilityRole="button"
-          disabled={saving || loadingSchedules || schedules.length === 0}
-          onPress={() => void saveAndExport()}
-          style={[styles.saveButton, saving && styles.disabledButton]}
+          accessibilityLabel="Open Collection History. View previous collection records."
+          onPress={() => router.push("/(app)/(driver)/garbage-history" as never)}
+          style={styles.historyAction}
         >
-          {saving ? (
-            <ActivityIndicator color={colors.white} />
-          ) : (
-            <>
-              <Ionicons name="save-outline" size={19} color={colors.white} />
-              <Text style={styles.saveButtonText}>
-                Export & Save Collected Garbage
-              </Text>
-            </>
-          )}
-        </Pressable>
-        {saving ? (
-          <View
-            accessibilityLiveRegion="polite"
-            style={styles.savingIndicator}
-          >
-            <ActivityIndicator color={colors.primary} />
-            <Text style={styles.savingText}>Saving collection… Please wait.</Text>
+          <View style={styles.historyIcon}>
+            <Ionicons name="time-outline" size={20} color={colors.primary} />
           </View>
-        ) : null}
+          <View style={styles.historyActionContent}>
+            <Text style={styles.historyActionText}>Collection History</Text>
+            <Text style={styles.historyActionHint}>
+              View your previous collection records
+            </Text>
+          </View>
+          <Ionicons
+            name="chevron-forward"
+            size={20}
+            color={colors.textMuted}
+          />
+        </Pressable>
+        <View style={styles.scheduleRow}>
+          <View style={[styles.scheduleCard, styles.scheduleSelectCard]}>
+            {loadingSchedules ? (
+              <ActivityIndicator color={colors.primary} />
+            ) : scheduleError ? (
+              <View style={styles.scheduleError}>
+                <Text style={styles.errorText}>{scheduleError}</Text>
+                <Pressable
+                  onPress={() => {
+                    setLoadingSchedules(true);
+                    void loadSchedules();
+                  }}
+                >
+                  <Text style={styles.retryText}>Try again</Text>
+                </Pressable>
+              </View>
+            ) : availableSchedules.length === 0 ? (
+              <Text style={styles.emptyText}>
+                {hasSavedCollectionForMode
+                  ? collectionMode
+                    ? `All assigned schedules already have a saved ${collectionMode === "input" ? "Input" : "Calculated"} Collection.`
+                    : "Both collection types are already saved for all assigned schedules."
+                  : "No schedules are assigned to you."}
+              </Text>
+            ) : (
+              <AppSelect
+                label="Collection schedule"
+                options={availableSchedules.map(
+                  (schedule) => `${schedule.dateLabel} · ${schedule.barangay}`
+                )}
+                onChange={(value) => {
+                  const schedule = availableSchedules.find(
+                    (item) =>
+                      `${item.dateLabel} · ${item.barangay}` === value
+                  );
+                  if (schedule) setScheduleId(schedule.id);
+                }}
+                value={
+                  selectedSchedule
+                    ? `${selectedSchedule.dateLabel} · ${selectedSchedule.barangay}`
+                    : ""
+                }
+              />
+            )}
+          </View>
+        </View>
+
+        <View style={styles.modeSelector}>
+          <View style={styles.modeSection}>
+            <Pressable
+              accessibilityRole="button"
+              accessibilityState={{ expanded: collectionMode === "input" }}
+              disabled={saving}
+              onPress={() =>
+                setCollectionMode((current) =>
+                  current === "input" ? null : "input"
+                )
+              }
+              style={[
+                styles.modeButton,
+                collectionMode === "input" && styles.modeButtonActive,
+              ]}
+            >
+              <View style={styles.modeButtonContent}>
+                <Text
+                  style={[
+                    styles.modeButtonText,
+                    collectionMode === "input" && styles.modeButtonTextActive,
+                  ]}
+                >
+                  Input Collection
+                </Text>
+                <Ionicons
+                  name={collectionMode === "input" ? "chevron-up" : "chevron-down"}
+                  size={20}
+                  color={collectionMode === "input" ? colors.white : colors.primary}
+                />
+              </View>
+            </Pressable>
+            {collectionMode === "input" ? (
+              <View style={styles.collectionForm}>
+                <View style={styles.intro}>
+                  <Text style={styles.description}>
+                    Enter the total number of sacks and the total collected weight.
+                  </Text>
+                </View>
+                <View style={styles.collectionTotalsCard}>
+                  <View style={styles.collectionInputField}>
+                    <Text style={styles.fieldLabel}>Sacks collected</Text>
+                    <TextInput
+                      accessibilityLabel="Sacks collected"
+                      keyboardType="number-pad"
+                      onChangeText={(value) =>
+                        setInputSacks(value.replace(/[^0-9]/g, ""))
+                      }
+                      placeholder="0"
+                      placeholderTextColor={colors.textMuted}
+                      style={styles.input}
+                      value={inputSacks}
+                    />
+                  </View>
+                  <View style={styles.collectionInputField}>
+                    <Text style={styles.fieldLabel}>Total garbage (kg)</Text>
+                    <TextInput
+                      accessibilityLabel="Total garbage in kilograms"
+                      keyboardType="decimal-pad"
+                      onChangeText={(value) =>
+                        setInputKg(sanitizeNumericInput(value))
+                      }
+                      placeholder="0"
+                      placeholderTextColor={colors.textMuted}
+                      style={styles.input}
+                      value={inputKg}
+                    />
+                  </View>
+                </View>
+                <Pressable
+                  accessibilityRole="button"
+                  disabled={
+                    saving || loadingSchedules || availableSchedules.length === 0
+                  }
+                  onPress={() => void saveCollection(false)}
+                  style={[styles.saveButton, saving && styles.disabledButton]}
+                >
+                  {saving ? (
+                    <ActivityIndicator color={colors.white} />
+                  ) : (
+                    <>
+                      <Ionicons name="save-outline" size={19} color={colors.white} />
+                      <Text style={styles.saveButtonText}>Save Collection</Text>
+                    </>
+                  )}
+                </Pressable>
+              </View>
+            ) : null}
+          </View>
+          <View style={styles.modeSection}>
+            <Pressable
+              accessibilityRole="button"
+              accessibilityState={{
+                expanded: collectionMode === "calculate",
+              }}
+              disabled={saving}
+              onPress={() =>
+                setCollectionMode((current) =>
+                  current === "calculate" ? null : "calculate"
+                )
+              }
+              style={[
+                styles.modeButton,
+                collectionMode === "calculate" && styles.modeButtonActive,
+              ]}
+            >
+              <View style={styles.modeButtonContent}>
+                <Text
+                  style={[
+                    styles.modeButtonText,
+                    collectionMode === "calculate" &&
+                      styles.modeButtonTextActive,
+                  ]}
+                >
+                  Calculate Collection
+                </Text>
+                <Ionicons
+                  name={
+                    collectionMode === "calculate" ? "chevron-up" : "chevron-down"
+                  }
+                  size={20}
+                  color={
+                    collectionMode === "calculate"
+                      ? colors.white
+                      : colors.primary
+                  }
+                />
+              </View>
+            </Pressable>
+            {collectionMode === "calculate" ? (
+              <View style={styles.calculateForm}>
+                <View style={styles.topActions}>
+                  <Pressable
+                    accessibilityRole="button"
+                    onPress={() => setShowAddMaterial(true)}
+                    style={styles.addButton}
+                  >
+                    <Ionicons
+                      name="add-circle-outline"
+                      size={19}
+                      color={colors.primary}
+                    />
+                    <Text style={styles.addButtonText}>Add material</Text>
+                  </Pressable>
+                </View>
+                <View style={styles.intro}>
+                  <Text style={styles.description}>
+                    Enter material amounts and rates, then export and save the calculation.
+                  </Text>
+                </View>
+                {materials.map((material) => {
+                  const price =
+                    toNumber(material.rate) * toNumber(material.quantity);
+                  const unitName =
+                    material.unit === "piece" ? "piece" : "kg";
+                  return (
+                    <View key={material.id} style={styles.materialCard}>
+                      <View style={styles.cardHeader}>
+                        <View style={styles.materialInfo}>
+                          <Text style={styles.materialName}>
+                            {material.name}
+                          </Text>
+                          <Text style={styles.unit}>
+                            {material.unit === "piece" ? "pcs" : "kg"}
+                          </Text>
+                        </View>
+                        {material.id.startsWith("custom-") ? (
+                          <Pressable
+                            accessibilityRole="button"
+                            accessibilityLabel={`Remove ${material.name}`}
+                            disabled={deletingMaterialId !== null}
+                            onPress={() => void removeMaterial(material)}
+                            hitSlop={8}
+                          >
+                            {deletingMaterialId === material.id ? (
+                              <ActivityIndicator
+                                color={colors.primary}
+                                size="small"
+                              />
+                            ) : (
+                              <Ionicons
+                                name="close-circle-outline"
+                                size={20}
+                                color={colors.textMuted}
+                              />
+                            )}
+                          </Pressable>
+                        ) : null}
+                        <View style={styles.priceBadge}>
+                          <Text style={styles.priceLabel}>Price</Text>
+                          <Text style={styles.price}>{formatPrice(price)}</Text>
+                        </View>
+                      </View>
+                      <View style={styles.fieldsRow}>
+                        <View style={styles.field}>
+                          <Text style={styles.fieldLabel}>
+                            Rate / {unitName}
+                          </Text>
+                          <TextInput
+                            accessibilityLabel={`${material.name} rate per ${unitName}`}
+                            keyboardType="decimal-pad"
+                            onChangeText={(value) => {
+                              editedRateIds.current.add(material.id);
+                              updateMaterial(material.id, "rate", value);
+                            }}
+                            onEndEditing={({ nativeEvent }) =>
+                              promptSaveDefaultPrice(
+                                material,
+                                nativeEvent.text
+                              )
+                            }
+                            placeholder="0.00"
+                            placeholderTextColor={colors.textMuted}
+                            style={styles.input}
+                            value={material.rate}
+                          />
+                        </View>
+                        <Text style={styles.multiply}>×</Text>
+                        <View style={styles.field}>
+                          <Text style={styles.fieldLabel}>
+                            Collected (
+                            {material.unit === "piece" ? "pcs" : "kg"})
+                          </Text>
+                          <TextInput
+                            accessibilityLabel={`${material.name} collected`}
+                            keyboardType={
+                              material.unit === "piece"
+                                ? "number-pad"
+                                : "decimal-pad"
+                            }
+                            onChangeText={(value) =>
+                              updateMaterial(
+                                material.id,
+                                "quantity",
+                                value
+                              )
+                            }
+                            placeholder="0"
+                            placeholderTextColor={colors.textMuted}
+                            style={styles.input}
+                            value={material.quantity}
+                          />
+                        </View>
+                      </View>
+                    </View>
+                  );
+                })}
+
+                <View style={styles.totalCard}>
+                  <View>
+                    <Text style={styles.totalLabel}>Total Price</Text>
+                    <Text style={styles.totalHint}>
+                      All collected materials
+                    </Text>
+                  </View>
+                  <Text style={styles.totalPrice}>{formatPrice(total)}</Text>
+                </View>
+                <Pressable
+                  accessibilityRole="button"
+                  disabled={
+                    saving || loadingSchedules || availableSchedules.length === 0
+                  }
+                  onPress={() => void saveCollection(true)}
+                  style={[styles.saveButton, saving && styles.disabledButton]}
+                >
+                  {saving ? (
+                    <ActivityIndicator color={colors.white} />
+                  ) : (
+                    <>
+                      <Ionicons
+                        name="save-outline"
+                        size={19}
+                        color={colors.white}
+                      />
+                      <Text style={styles.saveButtonText}>
+                        Export & Save Collected Garbage
+                      </Text>
+                    </>
+                  )}
+                </Pressable>
+                {saving ? (
+                  <View
+                    accessibilityLiveRegion="polite"
+                    style={styles.savingIndicator}
+                  >
+                    <ActivityIndicator color={colors.primary} />
+                    <Text style={styles.savingText}>
+                      Saving collection… Please wait.
+                    </Text>
+                  </View>
+                ) : null}
+              </View>
+            ) : null}
+          </View>
+        </View>
       </ScrollView>
 
       <Modal
@@ -746,14 +1012,38 @@ function createStyles(colors: ThemeColors) {
       paddingHorizontal: spacing.md,
       paddingVertical: spacing.sm,
     },
-    historyButton: {
+    historyAction: {
+      width: "100%",
       flexDirection: "row",
       alignItems: "center",
-      gap: spacing.xs,
+      gap: spacing.md,
       borderRadius: radius.md,
-      backgroundColor: colors.primaryLight,
+      borderWidth: 1,
+      borderColor: colors.border,
+      backgroundColor: colors.surface,
       paddingHorizontal: spacing.md,
       paddingVertical: spacing.sm,
+    },
+    historyIcon: {
+      width: 40,
+      height: 40,
+      alignItems: "center",
+      justifyContent: "center",
+      borderRadius: radius.md,
+      backgroundColor: colors.primaryLight,
+    },
+    historyActionContent: {
+      flex: 1,
+      gap: 2,
+    },
+    historyActionText: {
+      color: colors.text,
+      fontSize: fontSize.md,
+      fontWeight: "700",
+    },
+    historyActionHint: {
+      color: colors.textMuted,
+      fontSize: fontSize.xs,
     },
     addButtonText: {
       color: colors.primary,
@@ -779,6 +1069,57 @@ function createStyles(colors: ThemeColors) {
       backgroundColor: colors.surface,
       paddingHorizontal: spacing.md,
       paddingVertical: spacing.sm,
+    },
+    scheduleRow: {
+      flexDirection: "row",
+      alignItems: "stretch",
+      gap: spacing.sm,
+    },
+    scheduleSelectCard: {
+      flex: 1,
+      minWidth: 0,
+    },
+    modeSelector: {
+      flexDirection: "column",
+      gap: spacing.sm,
+    },
+    modeSection: {
+      gap: spacing.sm,
+    },
+    modeButton: {
+      width: "100%",
+      minHeight: 50,
+      justifyContent: "center",
+      borderRadius: radius.md,
+      borderWidth: 1,
+      borderColor: colors.primary,
+      backgroundColor: colors.surface,
+      paddingHorizontal: spacing.md,
+      paddingVertical: spacing.sm,
+    },
+    modeButtonActive: {
+      backgroundColor: colors.primary,
+    },
+    modeButtonContent: {
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "space-between",
+      gap: spacing.sm,
+    },
+    modeButtonText: {
+      color: colors.primary,
+      fontSize: fontSize.sm,
+      fontWeight: "700",
+      textAlign: "left",
+    },
+    modeButtonTextActive: {
+      color: colors.white,
+    },
+    collectionForm: {
+      gap: spacing.md,
+    },
+    calculateForm: {
+      gap: spacing.md,
     },
     scheduleError: { gap: spacing.xs },
     errorText: { color: colors.danger, fontSize: fontSize.sm },
@@ -887,6 +1228,19 @@ function createStyles(colors: ThemeColors) {
       color: colors.primary,
       fontSize: fontSize.xl,
       fontWeight: "800",
+    },
+    collectionTotalsCard: {
+      flexDirection: "row",
+      gap: spacing.md,
+    },
+    collectionInputField: {
+      flex: 1,
+      gap: spacing.xs,
+      borderRadius: radius.md,
+      borderWidth: 1,
+      borderColor: colors.border,
+      backgroundColor: colors.surface,
+      padding: spacing.md,
     },
     saveButton: {
       flexDirection: "row",

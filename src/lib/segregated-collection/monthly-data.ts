@@ -6,6 +6,7 @@ export type MonthlyCollectionReport = {
   reportYear: number;
   monthNumber: number;
   dayNumber: number;
+  totalSacks: number;
   totalKg: number;
 };
 
@@ -58,7 +59,7 @@ async function getCollectionReports(
   const { supabase } = await getAdminClient();
   let query = supabase
     .from("monthly_collection_reports")
-    .select("report_year, month_number, day_number, total_kg")
+    .select("report_year, month_number, day_number, total_sacks, total_kg")
     .order("report_year", { ascending: true })
     .order("month_number", { ascending: true })
     .order("day_number", { ascending: true });
@@ -73,6 +74,7 @@ async function getCollectionReports(
     reportYear: row.report_year,
     monthNumber: row.month_number,
     dayNumber: row.day_number,
+    totalSacks: row.total_sacks,
     totalKg: Number(row.total_kg),
   }));
 }
@@ -81,6 +83,7 @@ export async function saveMonthlyCollectionReport(input: {
   reportYear: number;
   monthNumber: number;
   dayNumber: number;
+  totalSacks: number;
   totalKg: number;
 }): Promise<MonthlyCollectionReport> {
   if (
@@ -93,6 +96,8 @@ export async function saveMonthlyCollectionReport(input: {
     !Number.isInteger(input.dayNumber) ||
     input.dayNumber < 1 ||
     input.dayNumber > new Date(Date.UTC(input.reportYear, input.monthNumber, 0)).getUTCDate() ||
+    !Number.isInteger(input.totalSacks) ||
+    input.totalSacks < 0 ||
     !Number.isFinite(input.totalKg) ||
     input.totalKg < 0 ||
     Math.abs(input.totalKg * 100 - Math.round(input.totalKg * 100)) > 1e-8
@@ -108,13 +113,14 @@ export async function saveMonthlyCollectionReport(input: {
         report_year: input.reportYear,
         month_number: input.monthNumber,
         day_number: input.dayNumber,
+        total_sacks: input.totalSacks,
         total_kg: input.totalKg,
         updated_by: user.id,
         updated_at: new Date().toISOString(),
       },
       { onConflict: "report_year,month_number,day_number" }
     )
-    .select("report_year, month_number, day_number, total_kg")
+    .select("report_year, month_number, day_number, total_sacks, total_kg")
     .single();
 
   if (error) {
@@ -125,6 +131,7 @@ export async function saveMonthlyCollectionReport(input: {
     reportYear: data.report_year,
     monthNumber: data.month_number,
     dayNumber: data.day_number,
+    totalSacks: data.total_sacks,
     totalKg: Number(data.total_kg),
   };
 }

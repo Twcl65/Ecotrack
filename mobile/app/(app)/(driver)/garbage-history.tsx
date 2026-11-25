@@ -29,6 +29,16 @@ function formatPrice(value: number) {
   return `₱${value.toFixed(2)}`;
 }
 
+function formatCollectionTotals(sackCount: number, totalKg: number) {
+  const sacks = new Intl.NumberFormat(undefined, {
+    maximumFractionDigits: 0,
+  }).format(sackCount);
+  const kilograms = new Intl.NumberFormat(undefined, {
+    maximumFractionDigits: 2,
+  }).format(totalKg);
+  return `${sacks} Sack / ${kilograms} kg`;
+}
+
 function formatDate(value: string) {
   return new Date(`${value}T12:00:00`).toLocaleDateString("en-US", {
     month: "short",
@@ -99,7 +109,7 @@ export default function GarbageHistoryScreen() {
 
   return (
     <View style={styles.screen}>
-      <AppHeader title="Collected Garbage History" module="driver" showBack />
+      <AppHeader title="Collection History" module="driver" showBack />
       <ScrollView contentContainerStyle={styles.content}>
         <View style={styles.filterCard}>
           <Text style={styles.filterTitle}>Filter by schedule date</Text>
@@ -184,13 +194,25 @@ export default function GarbageHistoryScreen() {
                 <View style={styles.recordBody}>
                   <Text style={styles.recordSchedule}>{record.barangay}</Text>
                   <Text style={styles.recordDate}>
-                    {formatDate(record.scheduleDate)} ·{" "}
-                    {record.materials.length} material
-                    {record.materials.length === 1 ? "" : "s"}
+                    {formatDate(record.scheduleDate)}
+                  </Text>
+                  <Text style={styles.recordMode}>
+                    {record.collectionMode === "input"
+                      ? "Input Collection"
+                      : "Calculate Collection"}
                   </Text>
                   <Text style={styles.recordTotal}>
-                    {formatPrice(record.totalPrice)}
+                    {formatCollectionTotals(record.sackCount, record.totalKg)}
                   </Text>
+                  {record.materials.length > 0 ? (
+                    <Text style={styles.recordMeta}>
+                      {record.materials.length} material
+                      {record.materials.length === 1 ? "" : "s"}
+                      {record.totalPrice > 0
+                        ? ` · ${formatPrice(record.totalPrice)}`
+                        : ""}
+                    </Text>
+                  ) : null}
                 </View>
                 <Ionicons
                   name="chevron-forward"
@@ -276,11 +298,17 @@ function createStyles(colors: ThemeColors) {
       fontWeight: "700",
     },
     recordDate: { color: colors.textMuted, fontSize: fontSize.xs },
+    recordMode: {
+      color: colors.text,
+      fontSize: fontSize.xs,
+      fontWeight: "700",
+    },
     recordTotal: {
       color: colors.primary,
       fontSize: fontSize.sm,
       fontWeight: "800",
     },
+    recordMeta: { color: colors.textMuted, fontSize: fontSize.xs },
     messageCard: {
       alignItems: "center",
       gap: spacing.sm,

@@ -1,21 +1,13 @@
 "use client";
 
-import { ClipboardList, LoaderCircle, Wrench } from "lucide-react";
-import { useMemo, useState } from "react";
-import {
-  saveVehicleMaintenanceData,
-  type VehicleMaintenanceData,
-} from "@/app/dashboard/report/vehicle-actions";
+import { getVehicleReportRows } from "@/lib/reports/vehicle-report";
 import type { ReportFilters } from "@/types/reports";
-import type { Route } from "@/types/routes";
 import type { Schedule } from "@/types/schedules";
-import { getVehicleDriverReportRows } from "@/lib/reports/vehicle-report";
+import type { Vehicle } from "@/types/vehicles";
 
 type Props = {
-  routes: Route[];
+  vehicles: Vehicle[];
   schedules: Schedule[];
-  initialMaintenance: VehicleMaintenanceData[];
-  onMaintenanceChange: (maintenance: VehicleMaintenanceData[]) => void;
   filters: ReportFilters;
 };
 
@@ -28,278 +20,228 @@ function formatDate(value: string | null) {
   });
 }
 
-function formatDuration(totalMinutes: number) {
-  const hours = Math.floor(totalMinutes / 60);
-  const minutes = totalMinutes % 60;
-  if (hours === 0) return `${minutes} min`;
-  if (minutes === 0) return `${hours} hr`;
-  return `${hours} hr ${minutes} min`;
+function formatKm(value: number | null) {
+  return value === null ? "—" : `${value.toLocaleString()} km`;
 }
 
 export default function VehicleReportTable({
-  routes,
+  vehicles,
   schedules,
-  initialMaintenance,
-  onMaintenanceChange,
   filters,
 }: Props) {
-  const [maintenance, setMaintenance] = useState(initialMaintenance);
-  const [editingRoute, setEditingRoute] = useState<Route | null>(null);
-  const [editingRoutes, setEditingRoutes] = useState<Route[]>([]);
-  const [scheduleText, setScheduleText] = useState("");
-  const [nextDate, setNextDate] = useState("");
-  const [serviceDate, setServiceDate] = useState("");
-  const [serviceDescription, setServiceDescription] = useState("");
-  const [saving, setSaving] = useState(false);
-  const [errorMessage, setErrorMessage] = useState("");
-
-  const rows = useMemo(() => {
-    return getVehicleDriverReportRows(routes, schedules, maintenance, filters);
-  }, [routes, schedules, filters, maintenance]);
-
-  function selectMaintenanceRoute(route: Route) {
-    const existing = maintenance.find((item) => item.routeId === route.id);
-    setEditingRoute(route);
-    setScheduleText(existing?.maintenanceSchedule ?? "");
-    setNextDate(existing?.nextMaintenanceDate ?? "");
-    setServiceDate("");
-    setServiceDescription("");
-    setErrorMessage("");
-  }
-
-  function openMaintenance(routesForDriver: Route[]) {
-    setEditingRoutes(routesForDriver);
-    if (routesForDriver[0]) selectMaintenanceRoute(routesForDriver[0]);
-  }
-
-  async function saveMaintenance() {
-    if (!editingRoute) return;
-    setSaving(true);
-    setErrorMessage("");
-    try {
-      const saved = await saveVehicleMaintenanceData({
-        routeId: editingRoute.id,
-        maintenanceSchedule: scheduleText,
-        nextMaintenanceDate: nextDate,
-        serviceDate,
-        serviceDescription,
-      });
-      const updated = [
-        ...maintenance.filter((item) => item.routeId !== saved.routeId),
-        saved,
-      ];
-      setMaintenance(updated);
-      onMaintenanceChange(updated);
-      setEditingRoute(null);
-    } catch (error) {
-      setErrorMessage(
-        error instanceof Error ? error.message : "Could not save vehicle maintenance."
-      );
-    } finally {
-      setSaving(false);
-    }
-  }
+  const rows = getVehicleReportRows(vehicles, schedules, filters);
 
   return (
-    <>
-      <section className="dashboard-card overflow-hidden">
-        <div className="border-b border-gray-100 px-4 py-3">
+    <section className="dashboard-card overflow-hidden">
+      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-gray-100 px-4 py-3">
+        <div>
           <h2 className="font-semibold text-gray-900">Vehicle Report</h2>
           <p className="text-xs text-gray-500">
-            Estimated kilometers and travel time use the route distance and duration multiplied by completed schedules in the selected date range. Add maintenance records per vehicle.
+            Managed vehicle details and odometer readings, with GPS distance
+            from completed collections in the selected period.
           </p>
         </div>
-        <div className="overflow-auto">
-          <table className="w-full min-w-[1050px] text-left text-sm">
-            <thead className="border-b border-gray-200 bg-gray-50/95">
-              <tr>
-                {[
-                  "Driver",
-                  "Completed routes",
-                  "Estimated kilometers",
-                  "Total travel time",
-                  "Maintenance schedule",
-                  "Last maintenance",
-                  "Next maintenance",
-                  "History",
-                  "Action",
-                ].map((heading) => (
-                  <th key={heading} className="px-3 py-3 text-xs font-bold uppercase tracking-wide text-gray-700">
-                    {heading}
-                  </th>
-                ))}
-              </tr>
-            </thead>
-            <tbody>
-              {rows.map((row) => (
-                <tr key={row.driver} className="border-b border-gray-100 last:border-0 hover:bg-gray-50/60">
-                  <td className="px-3 py-3 text-gray-700">{row.driver}</td>
-                  <td className="px-3 py-3 tabular-nums text-gray-800">{row.completedRuns}</td>
-                  <td className="px-3 py-3 tabular-nums text-gray-800">
-                    {row.estimatedKilometers.toFixed(1)} km
-                  </td>
-                  <td className="px-3 py-3 tabular-nums text-gray-800">
-                    {formatDuration(row.totalTravelMinutes)}
-                  </td>
-                  <td className="px-3 py-3 text-gray-700">
-                    {row.maintenanceSchedules.length
-                      ? row.maintenanceSchedules.join("; ")
-                      : "Not set"}
-                  </td>
-                  <td className="whitespace-nowrap px-3 py-3 text-gray-700">{formatDate(row.lastMaintenanceDate)}</td>
-                  <td className="whitespace-nowrap px-3 py-3 text-gray-700">
-                    {formatDate(row.nextMaintenanceDate)}
-                  </td>
-                  <td className="max-w-[240px] px-3 py-3 text-xs text-gray-600">
-                    {row.history.length ? (
-                      <ul className="space-y-1">
-                        {row.history.map((item) => (
-                          <li key={item.id}>
-                            <span className="font-medium">{formatDate(item.serviceDate)}:</span> {item.description}
-                          </li>
-                        ))}
-                      </ul>
-                    ) : "No history"}
-                  </td>
-                  <td className="px-3 py-3">
-                    <button
-                      type="button"
-                      onClick={() => openMaintenance(row.routes)}
-                      className="inline-flex items-center gap-1.5 whitespace-nowrap rounded-md border border-eco-primary px-2.5 py-1.5 text-xs font-semibold text-eco-primary hover:bg-eco-light"
-                    >
-                      <Wrench className="h-3.5 w-3.5" />
-                      Manage
-                    </button>
-                  </td>
-                </tr>
-              ))}
-              {!rows.length && (
-                <tr>
-                  <td colSpan={9} className="px-4 py-10 text-center text-sm text-gray-500">
-                    No drivers match the selected filters.
-                  </td>
-                </tr>
-              )}
-            </tbody>
-          </table>
-        </div>
-      </section>
+        <a
+          href="/dashboard/vehicles"
+          className="shrink-0 rounded-lg border border-eco-primary px-3 py-2 text-xs font-semibold text-eco-primary hover:bg-eco-light"
+        >
+          Manage Vehicles
+        </a>
+      </div>
 
-      {editingRoute && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/40 p-4">
-          <section
-            role="dialog"
-            aria-modal="true"
-            aria-labelledby="vehicle-maintenance-title"
-            className="max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-xl bg-white p-5 shadow-xl"
-          >
-            <div className="mb-5">
-              <h2 id="vehicle-maintenance-title" className="text-lg font-bold text-gray-900">
-                Vehicle maintenance
-              </h2>
-              {editingRoutes.length > 1 ? (
-                <Field label="Vehicle to manage">
-                  <select
-                    value={editingRoute.id}
-                    onChange={(event) => {
-                      const route = editingRoutes.find((item) => item.id === event.target.value);
-                      if (route) selectMaintenanceRoute(route);
-                    }}
-                    className={inputClass}
-                  >
-                    {editingRoutes.map((route) => (
-                      <option key={route.id} value={route.id}>
-                        {route.vehicleId || route.routeCode} · {route.name}
-                      </option>
-                    ))}
-                  </select>
-                </Field>
-              ) : (
-                <p className="mt-1 text-sm text-gray-500">
-                  {editingRoute.vehicleId || editingRoute.routeCode} · {editingRoute.name}
-                </p>
-              )}
-            </div>
-            <div className="space-y-4">
-              <Field label="Maintenance schedule">
-                <input
-                  value={scheduleText}
-                  onChange={(event) => setScheduleText(event.target.value)}
-                  placeholder="e.g. Oil change every 3 months"
-                  className={inputClass}
-                />
-              </Field>
-              <Field label="Next maintenance date">
-                <input
-                  type="date"
-                  value={nextDate}
-                  onChange={(event) => setNextDate(event.target.value)}
-                  aria-describedby="next-maintenance-hint"
-                  className={inputClass}
-                />
-                <span id="next-maintenance-hint" className="mt-1 block text-xs text-gray-500">
-                  Leave blank if no next service is scheduled.
-                </span>
-              </Field>
-              <div className="border-t border-gray-100 pt-4">
-                <h3 className="mb-3 flex items-center gap-2 text-sm font-semibold text-gray-800">
-                  <ClipboardList className="h-4 w-4 text-eco-primary" />
-                  Add completed maintenance to history
-                </h3>
-                <div className="space-y-3">
-                  <Field label="Service date">
-                    <input
-                      type="date"
-                      value={serviceDate}
-                      onChange={(event) => setServiceDate(event.target.value)}
-                      className={inputClass}
-                    />
-                  </Field>
-                  <Field label="Service details">
-                    <textarea
-                      value={serviceDescription}
-                      onChange={(event) => setServiceDescription(event.target.value)}
-                      rows={3}
-                      placeholder="Describe the maintenance performed"
-                      className={inputClass}
-                    />
-                  </Field>
-                </div>
-              </div>
-            </div>
-            {errorMessage && (
-              <p role="alert" className="mt-4 text-sm text-red-600">{errorMessage}</p>
+      <div className="hidden xl:block">
+        <table className="w-full table-fixed text-left text-xs">
+          <colgroup>
+            <col style={{ width: "15%" }} />
+            <col style={{ width: "10%" }} />
+            <col style={{ width: "10%" }} />
+            <col style={{ width: "7%" }} />
+            <col style={{ width: "8%" }} />
+            <col style={{ width: "8%" }} />
+            <col style={{ width: "9%" }} />
+            <col style={{ width: "9%" }} />
+            <col style={{ width: "9%" }} />
+            <col style={{ width: "15%" }} />
+          </colgroup>
+          <thead className="border-b border-gray-200 bg-gray-50">
+            <tr>
+              {[
+                "Vehicle",
+                "Type & model",
+                "Assigned driver",
+                "Completed",
+                "Odometer Start (km)",
+                "Odometer Current (km)",
+                "Actual Distance (km)",
+                "Last service",
+                "Next service",
+                "Maintenance",
+              ].map((heading) => (
+                <th
+                  key={heading}
+                  className="break-words px-2 py-3 font-semibold text-gray-700"
+                >
+                  {heading}
+                </th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            {rows.map(({ vehicle, completedSchedules, actualDistanceKm }) => (
+              <tr
+                key={vehicle.id}
+                className="border-b border-gray-100 align-top last:border-0 hover:bg-gray-50/60"
+              >
+                <td className="break-words px-2 py-3">
+                  <span className="block font-semibold text-gray-900">
+                    {vehicle.plateNumber}
+                  </span>
+                  <span className="text-[10px] text-gray-500">
+                    {vehicle.vehicleCode}
+                  </span>
+                </td>
+                <td className="break-words px-2 py-3 text-gray-700">
+                  <span className="block">{vehicle.vehicleType}</span>
+                  <span className="text-gray-500">{vehicle.model}</span>
+                </td>
+                <td className="break-words px-2 py-3 text-gray-700">
+                  {vehicle.assignedDriver || "—"}
+                </td>
+                <td className="px-2 py-3 tabular-nums text-gray-800">
+                  {completedSchedules}
+                </td>
+                <td className="px-2 py-3 tabular-nums text-gray-800">
+                  {formatKm(vehicle.startingOdometerKm)}
+                </td>
+                <td className="px-2 py-3 tabular-nums text-gray-700">
+                  {formatKm(vehicle.currentOdometerKm)}
+                </td>
+                <td className="px-2 py-3 tabular-nums text-gray-800">
+                  {actualDistanceKm.toLocaleString(undefined, {
+                    maximumFractionDigits: 1,
+                  })}{" "}
+                  km
+                </td>
+                <td className="break-words px-2 py-3 text-gray-700">
+                  <span className="block">
+                    {formatDate(vehicle.lastMaintenanceDate)}
+                  </span>
+                  <span className="text-[10px] text-gray-500">
+                    {formatKm(vehicle.lastMaintenanceOdometerKm)}
+                  </span>
+                </td>
+                <td className="break-words px-2 py-3 text-gray-700">
+                  <span className="block">
+                    {formatDate(vehicle.nextMaintenanceDate)}
+                  </span>
+                  <span className="text-[10px] text-gray-500">
+                    {formatKm(vehicle.nextMaintenanceOdometerKm)}
+                  </span>
+                </td>
+                <td className="break-words px-2 py-3">
+                  <span className="block text-gray-700">
+                    {vehicle.maintenanceType || "Not set"}
+                  </span>
+                  <StatusBadge status={vehicle.status} />
+                </td>
+              </tr>
+            ))}
+            {rows.length === 0 && (
+              <tr>
+                <td
+                  colSpan={9}
+                  className="px-4 py-10 text-center text-sm text-gray-500"
+                >
+                  No vehicles have been added to Manage Vehicles yet.
+                </td>
+              </tr>
             )}
-            <div className="mt-6 flex justify-end gap-2">
-              <button
-                type="button"
-                onClick={() => setEditingRoute(null)}
-                disabled={saving}
-                className="rounded-lg border border-gray-200 px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 disabled:opacity-50"
-              >
-                Cancel
-              </button>
-              <button
-                type="button"
-                onClick={() => void saveMaintenance()}
-                disabled={saving}
-                className="inline-flex items-center gap-2 rounded-lg bg-eco-primary px-4 py-2 text-sm font-semibold text-white hover:bg-eco-dark disabled:opacity-60"
-              >
-                {saving && <LoaderCircle className="h-4 w-4 animate-spin" />}
-                Save maintenance
-              </button>
+          </tbody>
+        </table>
+      </div>
+
+      <div className="grid gap-3 p-3 xl:hidden">
+        {rows.map(({ vehicle, completedSchedules, actualDistanceKm }) => (
+          <article
+            key={vehicle.id}
+            className="rounded-lg border border-gray-200 p-3"
+          >
+            <div className="flex items-start justify-between gap-3">
+              <div className="min-w-0">
+                <h3 className="break-words text-sm font-semibold text-gray-900">
+                  {vehicle.plateNumber}
+                </h3>
+                <p className="text-xs text-gray-500">
+                  {vehicle.vehicleCode} · {vehicle.vehicleType}
+                </p>
+                <p className="break-words text-xs text-gray-600">
+                  {vehicle.model}
+                </p>
+              </div>
+              <StatusBadge status={vehicle.status} />
             </div>
-          </section>
-        </div>
-      )}
-    </>
+            <dl className="mt-3 grid grid-cols-2 gap-x-3 gap-y-2 border-t border-gray-100 pt-3 text-xs">
+              <ReportValue label="Assigned driver">
+                {vehicle.assignedDriver || "—"}
+              </ReportValue>
+              <ReportValue label="Completed">
+                {completedSchedules}
+              </ReportValue>
+              <ReportValue label="Actual distance (selected period)">
+                {actualDistanceKm.toLocaleString(undefined, {
+                  maximumFractionDigits: 1,
+                })}{" "}
+                km
+              </ReportValue>
+              <ReportValue label="Current odometer">
+                {formatKm(vehicle.currentOdometerKm)}
+              </ReportValue>
+              <ReportValue label="Starting odometer">
+                {formatKm(vehicle.startingOdometerKm)}
+              </ReportValue>
+              <ReportValue label="Last service">
+                {formatDate(vehicle.lastMaintenanceDate)}
+                {vehicle.lastMaintenanceOdometerKm !== null
+                  ? ` · ${formatKm(vehicle.lastMaintenanceOdometerKm)}`
+                  : ""}
+              </ReportValue>
+              <ReportValue label="Next service">
+                {formatDate(vehicle.nextMaintenanceDate)}
+                {vehicle.nextMaintenanceOdometerKm !== null
+                  ? ` · ${formatKm(vehicle.nextMaintenanceOdometerKm)}`
+                  : ""}
+              </ReportValue>
+              <ReportValue label="Maintenance type">
+                {vehicle.maintenanceType || "Not set"}
+              </ReportValue>
+            </dl>
+          </article>
+        ))}
+        {rows.length === 0 && (
+          <p className="py-8 text-center text-sm text-gray-500">
+            No vehicles have been added to Manage Vehicles yet.
+          </p>
+        )}
+      </div>
+    </section>
   );
 }
 
-const inputClass =
-  "w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm text-gray-800 outline-none focus:border-eco-primary focus:ring-2 focus:ring-eco-primary/20";
+function StatusBadge({ status }: { status: Vehicle["status"] }) {
+  return (
+    <span
+      className={`inline-flex whitespace-nowrap rounded-full px-2 py-1 text-[10px] font-semibold ${
+        status === "active"
+          ? "bg-emerald-100 text-emerald-800"
+          : "bg-gray-100 text-gray-700"
+      }`}
+    >
+      {status === "active" ? "Active" : "Inactive"}
+    </span>
+  );
+}
 
-function Field({
+function ReportValue({
   label,
   children,
 }: {
@@ -307,9 +249,11 @@ function Field({
   children: React.ReactNode;
 }) {
   return (
-    <label className="block">
-      <span className="mb-1.5 block text-sm font-medium text-gray-700">{label}</span>
-      {children}
-    </label>
+    <div className="min-w-0">
+      <dt className="text-[10px] font-medium uppercase tracking-wide text-gray-500">
+        {label}
+      </dt>
+      <dd className="break-words text-gray-800">{children}</dd>
+    </div>
   );
 }

@@ -8,6 +8,7 @@ import { useTheme } from "@/context/ThemeContext";
 import { buildDriverNotifications, type NotificationItem } from "@/lib/data/notifications";
 import { fetchSchedules } from "@/lib/data/schedules";
 import { filterDriverSchedules } from "@/lib/data/driver";
+import { fetchDriverVehicleMaintenanceNotifications } from "@/lib/data/vehicles";
 import { useAuth } from "@/context/AuthContext";
 import { fontSize, radius, spacing, type ThemeColors } from "@/constants/theme";
 
@@ -26,9 +27,14 @@ export default function DriverNotificationsScreen() {
 
   const load = useCallback(async () => {
     const driverName = profile?.fullName ?? "Driver";
-    const schedules = await fetchSchedules();
+    const [schedules, maintenanceRequests] = await Promise.all([
+      fetchSchedules(),
+      profile?.id
+        ? fetchDriverVehicleMaintenanceNotifications(profile.id)
+        : Promise.resolve([]),
+    ]);
     const mine = filterDriverSchedules(schedules, driverName);
-    setItems(buildDriverNotifications(mine));
+    setItems(buildDriverNotifications(mine, maintenanceRequests));
     try {
       const raw = await AsyncStorage.getItem(READ_KEY);
       if (raw) setReadIds(new Set(JSON.parse(raw) as string[]));
@@ -54,6 +60,10 @@ export default function DriverNotificationsScreen() {
         "Could not save read status",
         error instanceof Error ? error.message : "The notification will still open."
       );
+    }
+    if (item.type === "Maintenance") {
+      router.push("/(app)/(driver)/vehicle" as never);
+      return;
     }
     router.push({
       pathname: "/(app)/(driver)/notification-detail",
@@ -102,7 +112,7 @@ export default function DriverNotificationsScreen() {
         keyExtractor={(item) => item.id}
         contentContainerStyle={styles.list}
         ListEmptyComponent={
-          <Text style={styles.empty}>No collection schedule notifications right now.</Text>
+          <Text style={styles.empty}>No notifications right now.</Text>
         }
         renderItem={({ item }) => {
           const isRead = readIds.has(item.id);

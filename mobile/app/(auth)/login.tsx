@@ -96,7 +96,11 @@ export default function LoginScreen() {
               }
               onRightIconPress={() => setShowPassword((v) => !v)}
             />
-            <Pressable style={styles.forgotWrap}>
+            <Pressable
+              style={styles.forgotWrap}
+              accessibilityRole="button"
+              onPress={() => router.push("/(auth)/forgot-password")}
+            >
               <Text style={styles.forgot}>Forgot Password?</Text>
             </Pressable>
             {error ? <Text style={styles.error}>{error}</Text> : null}

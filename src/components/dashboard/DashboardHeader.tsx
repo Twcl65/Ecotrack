@@ -18,6 +18,7 @@ const TITLES: Record<string, string> = {
   "/dashboard/users": "User Management",
   "/dashboard/collection": "Collection Monitoring",
   "/dashboard/routes": "Route Management",
+  "/dashboard/vehicles": "Manage Vehicles",
   "/dashboard/profile": "Account Profile",
   "/dashboard/settings": "Settings",
 };

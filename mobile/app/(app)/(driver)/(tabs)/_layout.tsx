@@ -75,9 +75,9 @@ export default function DriverTabsLayout() {
       <Tabs.Screen
         name="segregated"
         options={{
-          title: "Segregated",
+          title: "Collection",
           tabBarIcon: ({ color, size }) => (
-            <Ionicons name="leaf-outline" size={size} color={color} />
+            <Ionicons name="trash-outline" size={size} color={color} />
           ),
         }}
       />

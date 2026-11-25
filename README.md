@@ -31,7 +31,7 @@ The **service role key** is required for User Management to create login account
 
 ### 3. Set up the database
 
-Open the [Supabase SQL Editor](https://supabase.com/dashboard) and run `supabase/schema.sql`, followed by `supabase/users.sql`. These scripts create the tables, RLS policies, seed data, and the signup trigger that adds mobile registrations to admin User Management. Re-run both scripts after application updates to apply idempotent schema changes, including the archive fields.
+Open the [Supabase SQL Editor](https://supabase.com/dashboard) and run `supabase/schema.sql`, followed by `supabase/users.sql` and `supabase/push-notifications.sql`. These scripts create the tables, RLS policies, seed data, signup trigger, and push event queue. Then run `supabase/monthly-collection-reports.sql`, `supabase/driver-garbage-collections.sql`, and `supabase/driver-collection-reporting.sql` to enable driver-submitted sack/kg totals in the admin Collection Report. Each schedule can have separate Input Collection and Calculate Collection records; only Input Collection contributes to the daily report totals. Run `supabase/vehicles.sql` and `supabase/vehicle-operations.sql` for the fleet, GPS odometer tracking, and driver maintenance requests and alerts. For immediate push delivery, deploy `supabase/functions/send-push` and configure the Database Webhook as described at the top of `supabase/push-notifications.sql`.
 
 ### 4. Create an admin user
 
@@ -39,6 +39,10 @@ Open the [Supabase SQL Editor](https://supabase.com/dashboard) and run `supabase
 
 **Option B — Supabase Dashboard:** In **Authentication** → **Users**, create a user with email and password.  
 For username-only login in the app, use email format: `yourusername@ecotrack.local`
+
+### Password recovery setup
+
+In Supabase Dashboard → **Authentication** → **URL Configuration** → **Redirect URLs**, allow the web callback URL for each deployed site (for example, `http://localhost:3000/auth/callback` and `https://your-site.example.com/auth/callback`) and the mobile deep link `ecotrack://reset-password`. Password reset emails must use Supabase's confirmation URL so the recovery code is returned to the app. Configure a production SMTP provider in Supabase for dependable email delivery.
 
 ### 5. Run the dev server
 
